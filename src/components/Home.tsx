@@ -50,18 +50,22 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
 
   return (
     <motion.div 
-      className="flex-1 overflow-y-auto p-6 pt-20 pb-32 relative z-10 custom-scrollbar h-full"
+      className="flex-1 overflow-y-auto p-6 pt-20 pb-40 relative z-10 custom-scrollbar h-full"
     >
       <div className="max-w-md mx-auto relative">
         
         {/* Liquid Glass Clock Widget */}
         <div className="w-full mb-8 relative group">
           <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-white/5 rounded-[2.5rem] blur-md transition-all duration-500 group-hover:blur-lg" />
-          <div className="relative bg-white/10 dark:bg-black/20 backdrop-blur-3xl border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] rounded-[2.5rem] p-8 flex flex-col items-center justify-center overflow-hidden ios-shadow">
+          <div className="relative bg-white/10 dark:bg-white/5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] rounded-[2.5rem] p-8 flex flex-col items-center justify-center overflow-hidden ios-shadow">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
             
+            <div className="flex items-center gap-1 mb-2 opacity-60">
+               <Sparkles className="w-3 h-3 text-white" />
+               <span className="text-[10px] font-black tracking-[0.2em] uppercase text-white">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
+            </div>
             <h2 className="text-white/90 text-sm font-medium tracking-widest uppercase mb-2 drop-shadow-md">
               {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </h2>
@@ -73,7 +77,7 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
         </div>
 
         {/* Smart Stack Widget */}
-        <div className="w-full h-32 bg-white/10 dark:bg-black/20 rounded-[2rem] backdrop-blur-xl border border-white/20 shadow-xl overflow-hidden relative mb-6 ios-shadow">
+        <div className="w-full h-32 bg-white/10 dark:bg-white/5 rounded-[2rem] backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] overflow-hidden relative mb-6 ios-shadow">
           <AnimatePresence mode="wait">
             {currentWidget === 0 && (
               <motion.div
@@ -170,7 +174,8 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
                   onClick={() => onNavigate(app.id)}
                   className="flex flex-col items-center space-y-2 group snap-start flex-shrink-0"
                 >
-                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg} flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95`}>
+                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} bg-white/10 dark:bg-white/5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_16px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
                     <app.icon className={`w-8 h-8 ${app.color} drop-shadow-md relative z-10`} strokeWidth={1.5} />
                   </div>
                   <span className="text-xs font-medium text-white/90 truncate w-16 text-center drop-shadow-md tracking-wide">{app.name}</span>
@@ -182,13 +187,15 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <button onClick={() => onNavigate('browser')} className="bg-gradient-to-br from-white to-gray-100 rounded-[2rem] p-5 backdrop-blur-xl border border-white/30 shadow-xl flex flex-col items-center justify-center gap-3 ios-icon hover:scale-105 transition-all relative group">
-            <Globe className="w-8 h-8 text-blue-500 drop-shadow-md relative z-10" />
-            <span className="text-gray-800 font-medium relative z-10 drop-shadow-sm">Browser</span>
+          <button onClick={() => onNavigate('browser')} className="bg-white/10 dark:bg-white/5 rounded-[2rem] p-5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] flex flex-col items-center justify-center gap-3 hover:scale-105 transition-all relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
+            <Globe className="w-8 h-8 text-blue-400 drop-shadow-md relative z-10" />
+            <span className="text-white font-medium relative z-10 drop-shadow-sm">Browser</span>
           </button>
-          <button onClick={() => onNavigate('gallery')} className="bg-gradient-to-br from-white to-gray-100 rounded-[2rem] p-5 backdrop-blur-xl border border-white/30 shadow-xl flex flex-col items-center justify-center gap-3 ios-icon hover:scale-105 transition-all relative group">
-            <ImageIcon className="w-8 h-8 text-purple-500 drop-shadow-md relative z-10" />
-            <span className="text-gray-800 font-medium relative z-10 drop-shadow-sm">Photos</span>
+          <button onClick={() => onNavigate('gallery')} className="bg-white/10 dark:bg-white/5 rounded-[2rem] p-5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] flex flex-col items-center justify-center gap-3 hover:scale-105 transition-all relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
+            <ImageIcon className="w-8 h-8 text-purple-400 drop-shadow-md relative z-10" />
+            <span className="text-white font-medium relative z-10 drop-shadow-sm">Photos</span>
           </button>
         </div>
 

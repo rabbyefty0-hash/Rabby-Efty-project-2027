@@ -407,7 +407,7 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
       mediaStreamDestinationRef.current = playbackCtxRef.current.createMediaStreamDestination();
       const audioEl = new Audio();
       audioEl.autoplay = true;
-      audioEl.playsInline = true;
+      (audioEl as any).playsInline = true;
       audioEl.srcObject = mediaStreamDestinationRef.current.stream;
       audioElementRef.current = audioEl;
       

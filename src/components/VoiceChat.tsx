@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
-import { Mic, MicOff, Loader2, Volume2, StopCircle } from 'lucide-react';
+import { Mic, MicOff, Loader2, Volume2, StopCircle, Camera, CameraOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface VoiceChatProps {
@@ -15,7 +15,11 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
   const [isSpeaking, setIsSpeaking] = useState<number | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [autoSpeak, setAutoSpeak] = useState(false);
+  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
   const lastSpokenRef = useRef<string>('');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frameIntervalRef = useRef<any>(null);
 
   useEffect(() => {
     if (!autoSpeak) return;
@@ -100,7 +104,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
       mediaStreamDestinationRef.current = playbackCtxRef.current.createMediaStreamDestination();
       const audioEl = new Audio();
       audioEl.autoplay = true;
-      audioEl.playsInline = true;
+      (audioEl as any).playsInline = true;
       audioEl.srcObject = mediaStreamDestinationRef.current.stream;
       audioElementRef.current = audioEl;
       
@@ -123,7 +127,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } }
           },
-          systemInstruction: "You are ꧁Rᴀʙʙʏ Eғᴛʏ꧂, a helpful and friendly AI assistant. You are part of the ꧁Rᴀʙʙʏ Eғᴛʏ꧂ suite of tools. Keep your responses concise and conversational. Always identify yourself as ꧁Rᴀʙʙʏ Eғᴛʏ꧂ if asked.",
+          systemInstruction: "You are ꧁Rᴀʙʙʏ Eғᴛʏ꧂, a helpful and friendly AI assistant. You are part of the ꧁Rᴀʙʙʏ Eғᴛʏ꧂ suite of tools. Keep your responses concise and conversational. Always identify yourself as ꧁Rᴀʙʙʏ Eғᴛʏ꧂ if asked. If the user shares video, comment on what you see.",
           outputAudioTranscription: {},
           inputAudioTranscription: {},
         },
@@ -136,9 +140,15 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
                   noiseSuppression: true,
                   autoGainControl: true,
                   channelCount: 1 
-                } 
+                },
+                video: isCameraEnabled ? { facingMode: 'environment' } : false
               });
               streamRef.current = stream;
+              
+              if (isCameraEnabled && videoRef.current) {
+                videoRef.current.srcObject = stream;
+              }
+
               audioCtxRef.current = new AudioContext({ sampleRate: 16000 });
               if (audioCtxRef.current.state === 'suspended') {
                 await audioCtxRef.current.resume();
@@ -167,11 +177,31 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
               processor.connect(audioCtxRef.current.destination);
               processorRef.current = processor;
               
+              if (isCameraEnabled) {
+                frameIntervalRef.current = setInterval(() => {
+                  if (videoRef.current && canvasRef.current && session) {
+                    const video = videoRef.current;
+                    const canvas = canvasRef.current;
+                    if (video.videoWidth > 0 && video.videoHeight > 0) {
+                      canvas.width = video.videoWidth;
+                      canvas.height = video.videoHeight;
+                      const ctx = canvas.getContext('2d');
+                      if (ctx) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        const base64 = dataUrl.split(',')[1];
+                        session.sendRealtimeInput({ video: { data: base64, mimeType: 'image/jpeg' } });
+                      }
+                    }
+                  }
+                }, 1000); // Send 1 frame per second
+              }
+
               setIsConnected(true);
               setIsConnecting(false);
             } catch (err) {
-              console.error("Mic error:", err);
-              setError("Could not access microphone.");
+              console.error("Mic/Camera error:", err);
+              setError("Could not access microphone or camera.");
               disconnect();
             }
           },
@@ -288,6 +318,10 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
 
   const disconnect = () => {
     setTranscript([]);
+    if (frameIntervalRef.current) {
+      clearInterval(frameIntervalRef.current);
+      frameIntervalRef.current = null;
+    }
     if (processorRef.current) {
       processorRef.current.disconnect();
       processorRef.current = null;
@@ -344,13 +378,30 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 pb-safe relative z-10 flex flex-col items-center justify-center custom-scrollbar">
+        <canvas ref={canvasRef} className="hidden" />
         <div className="w-full max-w-md space-y-8 text-center">
           <div className="space-y-2">
             <p className="text-white/60 text-[15px]">Have a real-time conversation with ꧁Rᴀʙʙʏ Eғᴛʏ꧂.</p>
           </div>
 
+          {isCameraEnabled && isConnected && (
+            <div className="relative w-full aspect-video rounded-3xl overflow-hidden border border-white/20 shadow-2xl mb-8">
+              <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-3 right-3 flex items-center space-x-1.5 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-white tracking-widest uppercase">Live</span>
+              </div>
+            </div>
+          )}
+
           <div className="relative flex items-center justify-center py-8">
-          {isConnected && (
+          {isConnected && !isCameraEnabled && (
             <>
               <motion.div
                 animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0.1, 0.3] }}
@@ -365,23 +416,38 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
             </>
           )}
 
-          <button
-            onClick={isConnected ? disconnect : connect}
-            disabled={isConnecting}
-            className={`relative z-10 w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 liquid-glass ${
-              isConnected 
-                ? 'bg-red-500 hover:bg-red-600 text-white' 
-                : 'bg-indigo-500 hover:bg-indigo-600 text-white'
-            } ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
-          >
-            {isConnecting ? (
-              <Loader2 className="w-12 h-12 animate-spin" />
-            ) : isConnected ? (
-              <MicOff className="w-12 h-12" />
-            ) : (
-              <Mic className="w-12 h-12" />
-            )}
-          </button>
+          <div className="flex items-center justify-center gap-6 relative z-10">
+            <button
+              onClick={() => setIsCameraEnabled(!isCameraEnabled)}
+              disabled={isConnected || isConnecting}
+              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all duration-300 liquid-glass ${
+                isCameraEnabled ? 'bg-indigo-500 text-white' : 'bg-white/10 text-white/50'
+              } ${(isConnected || isConnecting) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+              title={isCameraEnabled ? "Disable Camera" : "Enable Camera"}
+            >
+              {isCameraEnabled ? <Camera className="w-6 h-6" /> : <CameraOff className="w-6 h-6" />}
+            </button>
+
+            <button
+              onClick={isConnected ? disconnect : connect}
+              disabled={isConnecting}
+              className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 liquid-glass ${
+                isConnected 
+                  ? 'bg-red-500 hover:bg-red-600 text-white' 
+                  : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+              } ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+            >
+              {isConnecting ? (
+                <Loader2 className="w-12 h-12 animate-spin" />
+              ) : isConnected ? (
+                <MicOff className="w-12 h-12" />
+              ) : (
+                <Mic className="w-12 h-12" />
+              )}
+            </button>
+            
+            <div className="w-14 h-14" /> {/* Spacer to balance the layout */}
+          </div>
         </div>
 
         <div className={`glass-card liquid-glass p-6 rounded-3xl inline-block mx-auto border shadow-lg transition-all duration-500 ${isVpnConnected ? 'border-green-500/30 ring-1 ring-green-500/20' : 'border-white/10'}`}>

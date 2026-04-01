@@ -41,10 +41,28 @@ export function ImageGenerator({ isVpnConnected }: ImageGeneratorProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isRefining, setIsRefining] = useState(false);
+  const [showStyleModal, setShowStyleModal] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState('Studio Lighting');
   const [recentPrompts, setRecentPrompts] = useState<string[]>(() => {
     const saved = localStorage.getItem('recentImagePrompts');
     return saved ? JSON.parse(saved) : [];
   });
+
+  const IMAGE_STYLES = [
+    "Realistic / Photographic",
+    "Anime / Manga",
+    "3D Render / Pixar",
+    "Watercolor Painting",
+    "Cyberpunk / Neon",
+    "Enhance / Upscale",
+    "Studio Lighting",
+    "Isolate Subject (White BG)",
+    "Cinematic / Movie Still",
+    "Vintage / Retro",
+    "Pencil Sketch",
+    "Pop Art",
+    "Oil Painting"
+  ];
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -249,7 +267,29 @@ export function ImageGenerator({ isVpnConnected }: ImageGeneratorProps) {
       });
     }
 
-    if (photorealistic && !sourceImage) {
+    if (selectedStyle && !sourceImage) {
+      const styleModifiers: Record<string, string> = {
+        "Realistic / Photographic": "highly detailed, photorealistic, 8k resolution, masterpiece, sharp focus, hyper-realistic",
+        "Anime / Manga": "anime style, studio ghibli, makoto shinkai, highly detailed, vibrant colors, 2d illustration",
+        "3D Render / Pixar": "3d render, pixar style, disney style, octane render, unreal engine 5, volumetric lighting",
+        "Watercolor Painting": "watercolor painting, artistic, expressive brushstrokes, soft lighting, masterpiece",
+        "Cyberpunk / Neon": "cyberpunk, neon lights, futuristic, sci-fi, dark city, highly detailed, cinematic lighting",
+        "Enhance / Upscale": "enhanced quality, 8k, ultra detailed, sharp focus, professional photography",
+        "Studio Lighting": "studio lighting, professional portrait, dramatic lighting, rim light, softbox, highly detailed",
+        "Isolate Subject (White BG)": "isolated on pure white background, studio lighting, product photography, clean edges",
+        "Cinematic / Movie Still": "cinematic lighting, movie still, 35mm lens, anamorphic, highly detailed, dramatic",
+        "Vintage / Retro": "vintage photography, retro aesthetic, film grain, polaroid, nostalgic, faded colors",
+        "Pencil Sketch": "pencil sketch, graphite, detailed drawing, artistic, hatching, black and white",
+        "Pop Art": "pop art style, Andy Warhol, vibrant colors, comic book style, halftone patterns",
+        "Oil Painting": "oil painting, thick impasto, classic art, museum quality, expressive brushstrokes"
+      };
+      
+      if (styleModifiers[selectedStyle]) {
+        finalPrompt = `${finalPrompt}, ${styleModifiers[selectedStyle]}`;
+      }
+    }
+
+    if (photorealistic && !sourceImage && selectedStyle !== "Realistic / Photographic") {
       finalPrompt = `${finalPrompt}, highly detailed, photorealistic, 8k resolution, masterpiece, cinematic lighting, sharp focus, hyper-realistic`;
     }
 
@@ -528,6 +568,16 @@ export function ImageGenerator({ isVpnConnected }: ImageGeneratorProps) {
               </Button>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowStyleModal(true)}
+                className={`h-14 w-14 ${getIconShapeClass()} shrink-0 border-white/10 bg-white/5 hover:bg-white/10 text-pink-400`}
+                title="Image Style"
+              >
+                <Palette className="w-5 h-5" />
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -1021,6 +1071,39 @@ export function ImageGenerator({ isVpnConnected }: ImageGeneratorProps) {
         </AnimatePresence>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showStyleModal && (
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowStyleModal(false)}>
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#f8f9fa] rounded-3xl overflow-hidden shadow-2xl text-black"
+            >
+              <div className="p-2 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                {IMAGE_STYLES.map((style, idx) => (
+                  <button
+                    key={style}
+                    type="button"
+                    onClick={() => {
+                      setSelectedStyle(style);
+                      setShowStyleModal(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-4 text-left text-lg ${idx !== IMAGE_STYLES.length - 1 ? 'border-b border-gray-200/60' : ''} hover:bg-gray-100 transition-colors`}
+                  >
+                    <span className="text-gray-800">{style}</span>
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedStyle === style ? 'border-indigo-600' : 'border-gray-300'}`}>
+                      {selectedStyle === style && <div className="w-3 h-3 bg-indigo-600 rounded-full" />}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

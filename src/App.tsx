@@ -4,11 +4,19 @@ import { Apps } from './components/Apps';
 import { StatusBar } from './components/StatusBar';
 import { UploadedFile, ChatMessage } from './types';
 import { initChatSession, sendChatMessage, restoreChatHistory } from './services/gemini';
-import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music } from 'lucide-react';
+import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged, User } from './firebase';
 import { populateDummyData } from './lib/populate';
 import { ThemeProvider, useTheme } from './ThemeContext';
+
+import { Calculator as CalculatorApp } from './components/Calculator';
+import { Notes as NotesApp } from './components/Notes';
+import { Weather as WeatherApp } from './components/Weather';
+import { Calendar as CalendarApp } from './components/Calendar';
+import { Clock as ClockApp } from './components/Clock';
+import { MapsApp } from './components/Map';
+import { MusicApp } from './components/Music';
 
 const Chatbot = lazy(() => import('./components/Chatbot').then(m => ({ default: m.Chatbot })));
 const ImageGenerator = lazy(() => import('./components/ImageGenerator').then(m => ({ default: m.ImageGenerator })));
@@ -29,8 +37,11 @@ const FileManager = lazy(() => import('./components/FileManager').then(m => ({ d
 const Gallery = lazy(() => import('./components/Gallery').then(m => ({ default: m.Gallery })));
 const SettingsApp = lazy(() => import('./components/SettingsApp').then(m => ({ default: m.SettingsApp })));
 const Followeran = lazy(() => import('./components/Followeran').then(m => ({ default: m.Followeran })));
+const CameraApp = lazy(() => import('./components/CameraApp').then(m => ({ default: m.default })));
+const ContactsApp = lazy(() => import('./components/ContactsApp').then(m => ({ default: m.default })));
+const YouTubeApp = lazy(() => import('./components/YouTubeApp').then(m => ({ default: m.default })));
 
-type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music';
+type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube';
 
 const APPS = [
   { id: 'image', name: 'Image', icon: ImageIcon, color: 'text-indigo-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -59,6 +70,7 @@ const APPS = [
   { id: 'camera', name: 'Camera', icon: Camera, color: 'text-zinc-800', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'clock', name: 'Clock', icon: Clock, color: 'text-black', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'contacts', name: 'Contacts', icon: Users, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'text-red-600', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'music', name: 'Music', icon: Music, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
 ];
 
@@ -354,7 +366,7 @@ function AppContent() {
       <div className="flex flex-col h-full w-full overflow-hidden font-sans relative bg-black text-white">
         <div className="absolute inset-0 z-0">
           <img src={wallpaperUrl} alt="Wallpaper" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/20 dark:bg-black/40" />
+          <div className="absolute inset-0 bg-black/10 dark:bg-black/20" />
         </div>
         <div className="relative z-10 flex flex-col items-center pt-24 h-full">
           <div className="text-center mb-8">
@@ -402,7 +414,7 @@ function AppContent() {
       {/* Wallpaper Background */}
       <div className="absolute inset-0 z-[-1] pointer-events-none">
         <img src={wallpaperUrl} alt="Wallpaper" className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-black/10 dark:bg-black/40" />
+        <div className="absolute inset-0 bg-black/10 dark:bg-black/20" />
       </div>
 
       {/* Control Center Swipe Area (Top Right) */}
@@ -724,15 +736,16 @@ function AppContent() {
                   {activeTab === 'gallery' && <Gallery />}
                   {activeTab === 'settings' && <SettingsApp onBack={handleBack} />}
                   {activeTab === 'followeran' && <Followeran onBack={handleBack} />}
-                  {['calculator', 'notes', 'weather', 'calendar', 'maps', 'camera', 'clock', 'contacts', 'music'].includes(activeTab) && (
-                    <div className="flex flex-col items-center justify-center h-full text-white">
-                      <h2 className="text-2xl font-bold mb-2">Coming Soon</h2>
-                      <p className="text-white/60">This app is under development.</p>
-                      <button onClick={handleBack} className="mt-6 px-6 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
-                        Go Back
-                      </button>
-                    </div>
-                  )}
+                  {activeTab === 'calculator' && <CalculatorApp onBack={handleBack} />}
+                  {activeTab === 'notes' && <NotesApp onBack={handleBack} />}
+                  {activeTab === 'weather' && <WeatherApp onBack={handleBack} />}
+                  {activeTab === 'calendar' && <CalendarApp onBack={handleBack} />}
+                  {activeTab === 'clock' && <ClockApp onBack={handleBack} />}
+                  {activeTab === 'music' && <MusicApp onBack={handleBack} />}
+                  {activeTab === 'maps' && <MapsApp onBack={handleBack} />}
+                  {activeTab === 'camera' && <CameraApp onClose={() => handleNavigate('home')} />}
+                  {activeTab === 'contacts' && <ContactsApp onBack={handleBack} />}
+                  {activeTab === 'youtube' && <YouTubeApp onBack={handleBack} />}
                   {activeTab === 'status' && <SystemStatus 
                     isVpnConnected={isVpnConnected} 
                     theme={theme}
@@ -763,14 +776,14 @@ function AppContent() {
       )}
 
       {/* Bottom Navigation Bar */}
-      <div className="absolute bottom-0 left-0 right-0 z-50 pointer-events-none flex flex-col items-center justify-end pb-4">
+      <div className="absolute bottom-0 left-0 right-0 z-50 pointer-events-none flex flex-col items-center justify-end pb-6">
         <AnimatePresence>
           {(activeTab === 'home' || activeTab === 'apps' || activeTab === 'status' || activeTab === 'settings') && (
             <motion.div 
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="max-w-[300px] w-full mx-auto glass-dock liquid-glass p-3 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] mb-4 border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)]"
+              className="max-w-[320px] w-full mx-auto glass-dock liquid-glass p-3.5 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl"
             >
               <button 
                 onClick={() => handleNavigate('home')}
