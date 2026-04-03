@@ -783,7 +783,7 @@ function AppContent() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="max-w-[320px] w-full mx-auto glass-dock liquid-glass p-3.5 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl"
+              className="max-w-[320px] w-full mx-auto glass-dock liquid-glass p-3.5 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl mb-4"
             >
               <button 
                 onClick={() => handleNavigate('home')}

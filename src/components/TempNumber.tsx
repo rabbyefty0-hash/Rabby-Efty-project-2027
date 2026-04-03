@@ -105,22 +105,44 @@ export function TempNumber({ isVpnConnected }: TempNumberProps) {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
       
-      // The messages are usually in a table
-      const rows = Array.from(doc.querySelectorAll('table tr'));
+      let msgs: SmsMessage[] = [];
+      const divRows = Array.from(doc.querySelectorAll('.message_details'));
       
-      const msgs = rows.map((row, index) => {
-        const cols = Array.from(row.querySelectorAll('td'));
-        if (cols.length >= 3) {
-          // Typically: Sender, Time, Message
-          return {
-            id: `${number}-${index}`,
-            sender: cols[0].textContent?.trim() || 'Unknown',
-            time: cols[1].textContent?.trim() || 'Unknown',
-            text: cols[2].textContent?.trim() || ''
-          };
-        }
-        return null;
-      }).filter(Boolean) as SmsMessage[];
+      if (divRows.length > 0) {
+        msgs = divRows.map((row, index) => {
+          const msgEl = row.querySelector('.msgg span');
+          const senderEl = row.querySelector('.senderr a') || row.querySelector('.senderr');
+          const timeEl = row.querySelector('.time');
+          
+          if (msgEl && senderEl && timeEl) {
+            const timeText = timeEl.textContent?.replace('Time', '').trim() || 'Unknown';
+            const senderText = senderEl.textContent?.trim() || 'Unknown';
+            const msgText = msgEl.textContent?.trim() || '';
+            
+            return {
+              id: `${number}-${index}`,
+              sender: senderText,
+              time: timeText,
+              text: msgText
+            };
+          }
+          return null;
+        }).filter(Boolean) as SmsMessage[];
+      } else {
+        const rows = Array.from(doc.querySelectorAll('table tr'));
+        msgs = rows.map((row, index) => {
+          const cols = Array.from(row.querySelectorAll('td'));
+          if (cols.length >= 3) {
+            return {
+              id: `${number}-${index}`,
+              sender: cols[0].textContent?.trim() || 'Unknown',
+              time: cols[1].textContent?.trim() || 'Unknown',
+              text: cols[2].textContent?.trim() || ''
+            };
+          }
+          return null;
+        }).filter(Boolean) as SmsMessage[];
+      }
       
       if (msgs.length > 0) {
         setMessages(msgs);

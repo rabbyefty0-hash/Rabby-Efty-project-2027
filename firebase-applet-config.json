@@ -1,10 +1,10 @@
 {
-  "projectId": "remixed-project-id",
-  "appId": "remixed-app-id",
-  "apiKey": "remixed-api-key",
-  "authDomain": "remixed-auth-domain",
-  "firestoreDatabaseId": "remixed-firestore-database-id",
-  "storageBucket": "remixed-storage-bucket",
-  "messagingSenderId": "remixed-messaging-sender-id",
-  "measurementId": "remixed-measurement-id"
+  "projectId": "caramel-abacus-357518",
+  "appId": "1:924510936578:web:7b4f0f60d92dd9eb9f911b",
+  "apiKey": "AIzaSyCGZluaiBJGLGidvSJhR16aKySc7BngjRw",
+  "authDomain": "caramel-abacus-357518.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-50024cd5-0e74-4292-85f4-0d452414f4f0",
+  "storageBucket": "caramel-abacus-357518.firebasestorage.app",
+  "messagingSenderId": "924510936578",
+  "measurementId": ""
 }

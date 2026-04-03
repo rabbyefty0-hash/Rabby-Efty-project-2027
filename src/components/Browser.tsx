@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface BrowserProps {
@@ -7,18 +7,40 @@ interface BrowserProps {
   setIsVpnConnected: (connected: boolean) => void;
 }
 
+interface BrowserTab {
+  id: string;
+  url: string | null;
+  inputUrl: string;
+  history: string[];
+  historyIndex: number;
+  title: string;
+  lastAccessed: number;
+  isSuspended: boolean;
+  isLoading: boolean;
+  loadError: boolean;
+}
+
 export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
   const [homeUrl, setHomeUrl] = useState(() => {
     return localStorage.getItem('browser_home_url') || 'https://www.google.com/search?igu=1';
   });
-  const [url, setUrl] = useState<string | null>(homeUrl);
-  const [inputUrl, setInputUrl] = useState(homeUrl.replace('https://', '').replace('http://', ''));
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const [tabs, setTabs] = useState<BrowserTab[]>([{
+    id: 'tab-' + Date.now(),
+    url: homeUrl,
+    inputUrl: homeUrl.replace('https://', '').replace('http://', ''),
+    history: [homeUrl],
+    historyIndex: 0,
+    title: 'New Tab',
+    lastAccessed: Date.now(),
+    isSuspended: false,
+    isLoading: true,
+    loadError: false
+  }]);
+  const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
+  
   const [isConnecting, setIsConnecting] = useState(false);
   const [useProxy, setUseProxy] = useState(false);
-  const [history, setHistory] = useState<string[]>([homeUrl]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-  const [loadError, setLoadError] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [tempHomeUrl, setTempHomeUrl] = useState(homeUrl);
@@ -30,18 +52,82 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
     ];
   });
 
+  const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
+
   useEffect(() => {
     localStorage.setItem('browser_bookmarks', JSON.stringify(bookmarks));
   }, [bookmarks]);
 
-  const currentBaseUrl = history[historyIndex];
+  // Tab suspension logic
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setTabs(prevTabs => prevTabs.map(tab => {
+        // Suspend tabs inactive for more than 5 minutes (300000 ms)
+        if (tab.id !== activeTabId && !tab.isSuspended && (now - tab.lastAccessed > 300000)) {
+          return { ...tab, isSuspended: true };
+        }
+        return tab;
+      }));
+    }, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [activeTabId]);
+
+  const updateActiveTab = (updates: Partial<BrowserTab>) => {
+    setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, ...updates } : t));
+  };
+
+  const updateTab = (id: string, updates: Partial<BrowserTab>) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const addTab = () => {
+    const newTab: BrowserTab = {
+      id: 'tab-' + Date.now(),
+      url: homeUrl,
+      inputUrl: homeUrl.replace('https://', '').replace('http://', ''),
+      history: [homeUrl],
+      historyIndex: 0,
+      title: 'New Tab',
+      lastAccessed: Date.now(),
+      isSuspended: false,
+      isLoading: true,
+      loadError: false
+    };
+    setTabs([...tabs, newTab]);
+    setActiveTabId(newTab.id);
+  };
+
+  const closeTab = (id: string) => {
+    if (tabs.length === 1) {
+      // If closing the last tab, just reset it
+      updateTab(id, {
+        url: homeUrl,
+        inputUrl: homeUrl.replace('https://', '').replace('http://', ''),
+        history: [homeUrl],
+        historyIndex: 0,
+        title: 'New Tab',
+        isLoading: true,
+        loadError: false
+      });
+      return;
+    }
+    
+    const newTabs = tabs.filter(t => t.id !== id);
+    setTabs(newTabs);
+    if (activeTabId === id) {
+      setActiveTabId(newTabs[newTabs.length - 1].id);
+    }
+  };
+
+  const currentBaseUrl = activeTab.history[activeTab.historyIndex];
   const isBookmarked = bookmarks.some(b => b.url === currentBaseUrl);
 
   const toggleBookmark = () => {
     if (isBookmarked) {
       setBookmarks(bookmarks.filter(b => b.url !== currentBaseUrl));
     } else {
-      let title = inputUrl;
+      let title = activeTab.inputUrl;
       try {
         const urlObj = new URL(currentBaseUrl.startsWith('http') ? currentBaseUrl : `https://${currentBaseUrl}`);
         title = urlObj.hostname.replace('www.', '');
@@ -53,14 +139,13 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
   // Loading timeout handler
   useEffect(() => {
     let timeout: NodeJS.Timeout;
-    if (isLoading) {
+    if (activeTab.isLoading) {
       timeout = setTimeout(() => {
-        setIsLoading(false);
-        setLoadError(true);
+        updateActiveTab({ isLoading: false, loadError: true });
       }, 15000); // 15 second timeout
     }
     return () => clearTimeout(timeout);
-  }, [isLoading]);
+  }, [activeTab.isLoading, activeTabId]);
 
   const toggleVpn = () => {
     if (isVpnConnected) {
@@ -94,56 +179,120 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
       }
     }
 
-    // Apply proxy if enabled and it's not a search engine that already allows iframes
     const effectiveUrl = getEffectiveUrl(finalUrl, useProxy);
+    
+    let title = finalUrl.replace('https://', '').replace('http://', '');
+    try {
+      const urlObj = new URL(finalUrl);
+      title = urlObj.hostname.replace('www.', '');
+    } catch (e) {}
 
-    setUrl(effectiveUrl);
-    setInputUrl(finalUrl.replace('https://', '').replace('http://', ''));
-    setIsLoading(true);
-    setLoadError(false);
-
-    // Update history
-    const newHistory = history.slice(0, historyIndex + 1);
+    const newHistory = activeTab.history.slice(0, activeTab.historyIndex + 1);
     newHistory.push(finalUrl);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
+
+    updateActiveTab({
+      url: effectiveUrl,
+      inputUrl: finalUrl.replace('https://', '').replace('http://', ''),
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+      isLoading: true,
+      loadError: false,
+      title: title,
+      isSuspended: false,
+      lastAccessed: Date.now()
+    });
   };
 
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
-    navigateTo(inputUrl);
+    navigateTo(activeTab.inputUrl);
   };
 
   const goBack = () => {
-    if (historyIndex > 0) {
-      const prevUrl = history[historyIndex - 1];
-      setHistoryIndex(historyIndex - 1);
+    if (activeTab.historyIndex > 0) {
+      const prevUrl = activeTab.history[activeTab.historyIndex - 1];
       const effectiveUrl = getEffectiveUrl(prevUrl, useProxy);
-      setUrl(effectiveUrl);
-      setInputUrl(prevUrl.replace('https://', '').replace('http://', ''));
-      setIsLoading(true);
+      
+      let title = prevUrl.replace('https://', '').replace('http://', '');
+      try {
+        const urlObj = new URL(prevUrl);
+        title = urlObj.hostname.replace('www.', '');
+      } catch (e) {}
+
+      updateActiveTab({
+        historyIndex: activeTab.historyIndex - 1,
+        url: effectiveUrl,
+        inputUrl: prevUrl.replace('https://', '').replace('http://', ''),
+        isLoading: true,
+        loadError: false,
+        title: title,
+        isSuspended: false,
+        lastAccessed: Date.now()
+      });
     }
   };
 
   const goForward = () => {
-    if (historyIndex < history.length - 1) {
-      const nextUrl = history[historyIndex + 1];
-      setHistoryIndex(historyIndex + 1);
+    if (activeTab.historyIndex < activeTab.history.length - 1) {
+      const nextUrl = activeTab.history[activeTab.historyIndex + 1];
       const effectiveUrl = getEffectiveUrl(nextUrl, useProxy);
-      setUrl(effectiveUrl);
-      setInputUrl(nextUrl.replace('https://', '').replace('http://', ''));
-      setIsLoading(true);
+      
+      let title = nextUrl.replace('https://', '').replace('http://', '');
+      try {
+        const urlObj = new URL(nextUrl);
+        title = urlObj.hostname.replace('www.', '');
+      } catch (e) {}
+
+      updateActiveTab({
+        historyIndex: activeTab.historyIndex + 1,
+        url: effectiveUrl,
+        inputUrl: nextUrl.replace('https://', '').replace('http://', ''),
+        isLoading: true,
+        loadError: false,
+        title: title,
+        isSuspended: false,
+        lastAccessed: Date.now()
+      });
     }
   };
 
   const openExternal = () => {
-    // Get the actual URL (strip proxy if present)
-    const actualUrl = history[historyIndex];
+    const actualUrl = activeTab.history[activeTab.historyIndex];
     window.open(actualUrl, '_blank');
   };
 
   return (
     <div className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-12 pb-24">
+      {/* Tab Bar */}
+      <div className="bg-zinc-100/80 backdrop-blur-md flex items-center px-2 pt-2 pb-1 space-x-1 overflow-x-auto custom-scrollbar border-b border-zinc-200">
+        {tabs.map(tab => (
+          <div 
+            key={tab.id} 
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-t-lg min-w-[120px] max-w-[180px] cursor-pointer transition-colors ${activeTabId === tab.id ? 'bg-white shadow-sm text-zinc-800' : 'bg-transparent text-zinc-500 hover:bg-zinc-200/50'}`} 
+            onClick={() => {
+              setActiveTabId(tab.id);
+              updateTab(tab.id, { lastAccessed: Date.now() });
+            }}
+          >
+            <Globe className={`w-3 h-3 shrink-0 ${tab.isSuspended ? 'text-zinc-300' : 'text-indigo-400'}`} />
+            <span className="text-xs truncate flex-1 font-medium">{tab.title}</span>
+            <button 
+              onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} 
+              className="hover:bg-zinc-200 rounded-full p-0.5 text-zinc-400 hover:text-zinc-700 transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))}
+        <button 
+          onClick={addTab} 
+          className="p-1.5 hover:bg-zinc-200/80 rounded-md text-zinc-500 transition-colors ml-1"
+          title="New Tab"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* Browser Toolbar */}
       <div className="bg-white/90 backdrop-blur-xl border-b border-zinc-200 p-3 flex flex-col space-y-3 shadow-sm">
         <div className="flex flex-col space-y-3 text-zinc-700">
@@ -171,8 +320,8 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
             </AnimatePresence>
             <input 
               type="text" 
-              value={inputUrl}
-              onChange={(e) => setInputUrl(e.target.value)}
+              value={activeTab.inputUrl}
+              onChange={(e) => updateActiveTab({ inputUrl: e.target.value })}
               className="flex-1 bg-transparent text-[15px] outline-none text-zinc-800 placeholder:text-zinc-400"
               placeholder={isVpnConnected ? "Browsing securely via VPN..." : "Search or enter URL..."}
             />
@@ -198,14 +347,14 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
             <div className="flex items-center space-x-1">
               <button 
                 onClick={goBack}
-                disabled={historyIndex === 0}
+                disabled={activeTab.historyIndex === 0}
                 className="p-2 hover:bg-zinc-200/50 rounded-full transition-all disabled:opacity-20 active:scale-90"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <button 
                 onClick={goForward}
-                disabled={historyIndex === history.length - 1}
+                disabled={activeTab.historyIndex === activeTab.history.length - 1}
                 className="p-2 hover:bg-zinc-200/50 rounded-full transition-all disabled:opacity-20 active:scale-90"
               >
                 <ArrowRight className="w-5 h-5" />
@@ -213,15 +362,13 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
               <button 
                 className="p-2 hover:bg-zinc-200/50 rounded-full transition-all active:scale-90"
                 onClick={() => {
-                  setIsLoading(true);
-                  setLoadError(false);
-                  // Force reload by slightly changing the URL if it's already the same
-                  const currentUrl = url;
-                  setUrl(null);
-                  setTimeout(() => setUrl(currentUrl), 10);
+                  updateActiveTab({ isLoading: true, loadError: false, isSuspended: false });
+                  const currentUrl = activeTab.url;
+                  updateActiveTab({ url: null });
+                  setTimeout(() => updateActiveTab({ url: currentUrl }), 10);
                 }}
               >
-                <RotateCw className={`w-5 h-5 ${isLoading ? 'animate-spin text-indigo-500' : ''}`} />
+                <RotateCw className={`w-5 h-5 ${activeTab.isLoading ? 'animate-spin text-indigo-500' : ''}`} />
               </button>
               <button 
                 className="p-2 hover:bg-zinc-200/50 rounded-full transition-all active:scale-90"
@@ -256,11 +403,9 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
             <button 
               onClick={() => {
                 setUseProxy(!useProxy);
-                // Trigger reload with new proxy setting
-                const currentBaseUrl = history[historyIndex];
+                const currentBaseUrl = activeTab.history[activeTab.historyIndex];
                 const effectiveUrl = getEffectiveUrl(currentBaseUrl, !useProxy);
-                setUrl(effectiveUrl);
-                setIsLoading(true);
+                updateActiveTab({ url: effectiveUrl, isLoading: true });
               }}
               className={`flex items-center space-x-1.5 px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors ${useProxy ? 'bg-indigo-500 text-white' : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'}`}
             >
@@ -293,7 +438,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
             </div>
           </div>
           <div className="text-[9px] font-mono text-zinc-400">
-            {historyIndex + 1} / {history.length}
+            {activeTab.historyIndex + 1} / {activeTab.history.length}
           </div>
 
           {/* Bookmarks Dropdown */}
@@ -396,65 +541,83 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
       
       {/* Browser Content */}
       <div className="flex-1 bg-white relative pb-0">
-        {isLoading && (
-          <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
-            <RotateCw className="w-8 h-8 text-indigo-500 animate-spin mb-2" />
-            <p className="text-xs font-medium text-zinc-500">Loading page...</p>
-          </div>
-        )}
+        {tabs.map(tab => (
+          <div key={tab.id} className={`w-full h-full absolute inset-0 ${activeTabId === tab.id ? 'z-10' : 'z-0 hidden'}`}>
+            {tab.isLoading && activeTabId === tab.id && (
+              <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
+                <RotateCw className="w-8 h-8 text-indigo-500 animate-spin mb-2" />
+                <p className="text-xs font-medium text-zinc-500">Loading page...</p>
+              </div>
+            )}
 
-        {loadError && !isLoading && (
-          <div className="absolute inset-0 z-20 bg-white flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-              <AlertCircle className="w-8 h-8 text-red-500" />
-            </div>
-            <h3 className="text-lg font-bold text-zinc-900 mb-2">Page Load Timeout</h3>
-            <p className="text-sm text-zinc-500 mb-6 max-w-xs">
-              This website might be blocking the connection or taking too long to respond.
-            </p>
-            <div className="flex flex-col w-full max-w-xs space-y-2">
-              <button 
-                onClick={() => {
-                  setIsLoading(true);
-                  setLoadError(false);
-                  const currentUrl = url;
-                  setUrl('');
-                  setTimeout(() => setUrl(currentUrl), 10);
-                }}
-                className="w-full py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
-              >
-                Retry Loading
-              </button>
-              <button 
-                onClick={openExternal}
-                className="w-full py-3 bg-zinc-100 text-zinc-700 rounded-xl font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center space-x-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Open in New Tab</span>
-              </button>
-              <button 
-                onClick={() => {
-                  setUseProxy(!useProxy);
-                  const currentBaseUrl = history[historyIndex];
-                  navigateTo(currentBaseUrl);
-                }}
-                className="text-xs text-indigo-500 font-bold hover:underline py-2"
-              >
-                {useProxy ? 'Try without Proxy' : 'Try with Proxy Mode'}
-              </button>
-            </div>
+            {tab.loadError && !tab.isLoading && activeTabId === tab.id && (
+              <div className="absolute inset-0 z-20 bg-white flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-lg font-bold text-zinc-900 mb-2">Page Load Timeout</h3>
+                <p className="text-sm text-zinc-500 mb-6 max-w-xs">
+                  This website might be blocking the connection or taking too long to respond.
+                </p>
+                <div className="flex flex-col w-full max-w-xs space-y-2">
+                  <button 
+                    onClick={() => {
+                      updateTab(tab.id, { isLoading: true, loadError: false });
+                      const currentUrl = tab.url;
+                      updateTab(tab.id, { url: null });
+                      setTimeout(() => updateTab(tab.id, { url: currentUrl }), 10);
+                    }}
+                    className="w-full py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
+                  >
+                    Retry Loading
+                  </button>
+                  <button 
+                    onClick={openExternal}
+                    className="w-full py-3 bg-zinc-100 text-zinc-700 rounded-xl font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Open in New Tab</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setUseProxy(!useProxy);
+                      const currentBaseUrl = tab.history[tab.historyIndex];
+                      navigateTo(currentBaseUrl);
+                    }}
+                    className="text-xs text-indigo-500 font-bold hover:underline py-2"
+                  >
+                    {useProxy ? 'Try without Proxy' : 'Try with Proxy Mode'}
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {!tab.isSuspended ? (
+              <iframe 
+                src={tab.url || undefined} 
+                loading={activeTabId === tab.id ? "eager" : "lazy"}
+                className="w-full h-full border-none"
+                title={`Browser View ${tab.id}`}
+                onLoad={() => updateTab(tab.id, { isLoading: false, loadError: false })}
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50 p-6 text-center">
+                <Globe className="w-16 h-16 text-zinc-300 mb-4" />
+                <h3 className="text-xl font-bold text-zinc-700 mb-2">Tab Suspended</h3>
+                <p className="text-sm text-zinc-500 mb-6 max-w-sm">
+                  This tab was suspended to save memory and improve performance because it was inactive for a while.
+                </p>
+                <button 
+                  onClick={() => updateTab(tab.id, { isSuspended: false, lastAccessed: Date.now(), isLoading: true })} 
+                  className="px-6 py-3 bg-indigo-500 text-white font-bold rounded-xl hover:bg-indigo-600 transition-colors shadow-sm"
+                >
+                  Reload Tab
+                </button>
+              </div>
+            )}
           </div>
-        )}
-        <iframe 
-          src={url || undefined} 
-          className="w-full h-full border-none"
-          title="Browser View"
-          onLoad={() => {
-            setIsLoading(false);
-            setLoadError(false);
-          }}
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-        />
+        ))}
       </div>
     </div>
   );

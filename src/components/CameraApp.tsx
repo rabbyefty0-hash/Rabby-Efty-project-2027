@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Video, FlipHorizontal, Circle, Square, X } from 'lucide-react';
+import { Camera, Video, FlipHorizontal, Circle, Square, X, Sparkles, Send, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import Markdown from 'react-markdown';
+import { GoogleGenAI } from '@google/genai';
 
 interface CameraAppProps {
   onClose: () => void;
@@ -15,6 +18,85 @@ export default function CameraApp({ onClose }: CameraAppProps) {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+
+  // Chat State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [messages, setMessages] = useState<{role: 'user'|'model', text: string}[]>([]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isChatOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isTyping, isChatOpen]);
+
+  const handleSendMessage = async (overrideText?: string) => {
+    const userMessage = overrideText || input;
+    if (!userMessage.trim() || isTyping) return;
+    
+    if (!overrideText) setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setIsTyping(true);
+
+    try {
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("API key is missing.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const parts: any[] = [{ text: userMessage }];
+      
+      // Capture current frame or use captured image
+      if (capturedImage) {
+        const base64 = capturedImage.split(',')[1];
+        parts.push({
+          inlineData: {
+            data: base64,
+            mimeType: 'image/jpeg'
+          }
+        });
+      } else if (videoRef.current && canvasRef.current) {
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            if (facingMode === 'user') {
+              ctx.translate(canvas.width, 0);
+              ctx.scale(-1, 1);
+            }
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const base64 = canvas.toDataURL('image/jpeg').split(',')[1];
+            parts.push({
+              inlineData: {
+                data: base64,
+                mimeType: 'image/jpeg'
+              }
+            });
+          }
+        }
+      }
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-preview',
+        contents: { parts }
+      });
+
+      if (response.text) {
+        setMessages(prev => [...prev, { role: 'model', text: response.text }]);
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error. Please check your API key and try again." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
   const startCamera = async () => {
     if (stream) {
@@ -117,16 +199,107 @@ export default function CameraApp({ onClose }: CameraAppProps) {
           <button onClick={() => setCapturedImage(null)} className="p-2 rounded-full bg-black/50 text-white">
             <X className="w-6 h-6" />
           </button>
-          <button onClick={() => {
-            const a = document.createElement('a');
-            a.href = capturedImage;
-            a.download = `photo-${Date.now()}.jpg`;
-            a.click();
-          }} className="px-4 py-2 bg-white text-black rounded-full font-medium text-sm">
-            Save
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                setIsChatOpen(true);
+                if (messages.length === 0) {
+                  handleSendMessage("Analyze this image and provide context-aware help, suggestions, or identify what it is.");
+                }
+              }} 
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white backdrop-blur-md font-medium text-sm shadow-lg"
+            >
+              <Sparkles className="w-4 h-4" />
+              Analyze
+            </button>
+            <button onClick={() => {
+              const a = document.createElement('a');
+              a.href = capturedImage;
+              a.download = `photo-${Date.now()}.jpg`;
+              a.click();
+            }} className="px-4 py-2 bg-white text-black rounded-full font-medium text-sm">
+              Save
+            </button>
+          </div>
         </div>
         <img src={capturedImage} alt="Captured" className="w-full h-full object-contain" />
+
+        {/* Chat Overlay for Captured Image */}
+        <AnimatePresence>
+          {isChatOpen && (
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="absolute inset-0 z-20 bg-black/60 backdrop-blur-md flex flex-col"
+            >
+              <div className="p-4 pt-12 flex justify-between items-center bg-black/40 border-b border-white/10">
+                <h3 className="text-white font-medium flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-400" />
+                  Image Assistant
+                </h3>
+                <button onClick={() => setIsChatOpen(false)} className="p-2 rounded-full bg-white/10 text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                {messages.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-white/50 space-y-4">
+                    <Sparkles className="w-12 h-12 opacity-50" />
+                    <p className="text-center">Ask me anything about this photo!</p>
+                  </div>
+                )}
+                {messages.map((msg, idx) => (
+                  <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[85%] rounded-2xl p-3 ${
+                      msg.role === 'user' 
+                        ? 'bg-blue-600 text-white rounded-tr-sm' 
+                        : 'bg-zinc-800 text-white rounded-tl-sm border border-white/10'
+                    }`}>
+                      {msg.role === 'model' ? (
+                        <div className="prose prose-invert prose-sm max-w-none">
+                          <Markdown>{msg.text}</Markdown>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{msg.text}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-zinc-800 rounded-2xl rounded-tl-sm p-4 border border-white/10">
+                      <Loader2 className="w-5 h-5 animate-spin text-white/50" />
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              <div className="p-4 bg-black/40 border-t border-white/10 pb-safe">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Ask about this photo..."
+                    className="flex-1 bg-white/10 border border-white/20 rounded-full px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={() => handleSendMessage()}
+                    disabled={!input.trim() || isTyping}
+                    className="p-3 rounded-full bg-blue-600 text-white disabled:opacity-50 disabled:bg-white/10 transition-colors"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -154,7 +327,14 @@ export default function CameraApp({ onClose }: CameraAppProps) {
             VIDEO
           </button>
         </div>
-        <div className="w-9" /> {/* Spacer */}
+        <button onClick={() => {
+          setIsChatOpen(true);
+          if (messages.length === 0) {
+            handleSendMessage("Analyze what the camera is currently seeing and provide context-aware help or suggestions.");
+          }
+        }} className="p-2 rounded-full bg-black/50 text-white backdrop-blur-md">
+          <Sparkles className="w-5 h-5 text-blue-400" />
+        </button>
       </div>
 
       {/* Viewfinder */}
@@ -196,6 +376,83 @@ export default function CameraApp({ onClose }: CameraAppProps) {
           <FlipHorizontal className="w-6 h-6" />
         </button>
       </div>
+
+      {/* Chat Overlay */}
+      <AnimatePresence>
+        {isChatOpen && (
+          <motion.div 
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="absolute inset-0 z-20 bg-black/60 backdrop-blur-md flex flex-col"
+          >
+            <div className="p-4 pt-12 flex justify-between items-center bg-black/40 border-b border-white/10">
+              <h3 className="text-white font-medium flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-blue-400" />
+                Camera Assistant
+              </h3>
+              <button onClick={() => setIsChatOpen(false)} className="p-2 rounded-full bg-white/10 text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              {messages.length === 0 && (
+                <div className="h-full flex flex-col items-center justify-center text-white/50 space-y-4">
+                  <Sparkles className="w-12 h-12 opacity-50" />
+                  <p className="text-center">Ask me anything about what the camera sees!</p>
+                </div>
+              )}
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-2xl p-3 ${
+                    msg.role === 'user' 
+                      ? 'bg-blue-600 text-white rounded-tr-sm' 
+                      : 'bg-zinc-800 text-white rounded-tl-sm border border-white/10'
+                  }`}>
+                    {msg.role === 'model' ? (
+                      <div className="prose prose-invert prose-sm max-w-none">
+                        <Markdown>{msg.text}</Markdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm">{msg.text}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-zinc-800 rounded-2xl rounded-tl-sm p-4 border border-white/10">
+                    <Loader2 className="w-5 h-5 animate-spin text-white/50" />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 bg-black/40 border-t border-white/10 pb-safe">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder="Ask about what you see..."
+                  className="flex-1 bg-white/10 border border-white/20 rounded-full px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  onClick={() => handleSendMessage()}
+                  disabled={!input.trim() || isTyping}
+                  className="p-3 rounded-full bg-blue-600 text-white disabled:opacity-50 disabled:bg-white/10 transition-colors"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

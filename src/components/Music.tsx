@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2 } from 'lucide-react';
+import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAllFiles, VFSNode, verifyPermission } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
@@ -20,6 +20,7 @@ export function MusicApp({ onBack }: MusicProps) {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedTracks, setGeneratedTracks] = useState<{ url: string, name: string }[]>([]);
+  const [selectedAudioFile, setSelectedAudioFile] = useState<VFSNode | null>(null);
 
   useEffect(() => {
     loadAudioFiles();
@@ -80,7 +81,7 @@ export function MusicApp({ onBack }: MusicProps) {
   };
 
   const generateMusic = async () => {
-    if (!prompt) return;
+    if (!prompt && !selectedAudioFile) return;
     
     try {
       setIsGenerating(true);
@@ -101,9 +102,48 @@ export function MusicApp({ onBack }: MusicProps) {
       }
 
       const ai = new GoogleGenAI({ apiKey });
+      
+      const parts: any[] = [];
+      if (prompt) {
+        parts.push({ text: prompt });
+      } else {
+        parts.push({ text: "Enhance this audio and apply creative variations." });
+      }
+
+      if (selectedAudioFile) {
+        let file: File | null = null;
+        if (selectedAudioFile.data instanceof File) {
+          file = selectedAudioFile.data;
+        } else if (selectedAudioFile.handle && selectedAudioFile.handle.kind === 'file') {
+          const hasPermission = await verifyPermission(selectedAudioFile.handle, false);
+          if (hasPermission) {
+            file = await selectedAudioFile.handle.getFile();
+          }
+        }
+
+        if (file) {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file as File);
+            reader.onload = () => {
+              const result = reader.result as string;
+              resolve(result.split(',')[1]);
+            };
+            reader.onerror = error => reject(error);
+          });
+          
+          parts.push({
+            inlineData: {
+              data: base64,
+              mimeType: file.type || 'audio/mp3'
+            }
+          });
+        }
+      }
+
       const response = await ai.models.generateContentStream({
         model: "lyria-3-clip-preview",
-        contents: prompt,
+        contents: { parts },
       });
 
       let audioBase64 = "";
@@ -213,31 +253,70 @@ export function MusicApp({ onBack }: MusicProps) {
             <div className="bg-gradient-to-br from-pink-500/20 to-purple-500/20 p-6 rounded-3xl border border-white/10">
               <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-pink-400" />
-                Create AI Music
+                Create & Enhance AI Music
               </h2>
               <p className="text-sm text-white/60 mb-4">
-                Describe the music you want to hear. The AI will generate a 30-second clip using Lyria.
+                Describe the music you want to hear, or select an audio file to enhance, apply effects, or create variations.
               </p>
+              
+              {/* Audio File Selection */}
+              <div className="mb-4">
+                {selectedAudioFile ? (
+                  <div className="flex items-center justify-between bg-black/40 border border-pink-500/30 rounded-xl p-3">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-8 h-8 bg-pink-500/20 rounded-lg flex items-center justify-center text-pink-400 shrink-0">
+                        <MusicIcon className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-medium truncate">{selectedAudioFile.name}</span>
+                    </div>
+                    <button 
+                      onClick={() => setSelectedAudioFile(null)}
+                      className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4 text-white/60" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <select
+                      onChange={(e) => {
+                        const file = audioFiles.find(f => f.id === e.target.value);
+                        if (file) setSelectedAudioFile(file);
+                        e.target.value = ""; // Reset select
+                      }}
+                      className="w-full appearance-none bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white/80 focus:outline-none focus:border-pink-500/50 cursor-pointer"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Select an audio file to enhance...</option>
+                      {audioFiles.map(file => (
+                        <option key={file.id} value={file.id}>{file.name}</option>
+                      ))}
+                    </select>
+                    <Upload className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+                  </div>
+                )}
+              </div>
+
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="A cinematic orchestral track with a driving beat..."
-                className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none h-32 mb-4"
+                placeholder={selectedAudioFile ? "E.g., Make it sound more cinematic, add heavy bass, or remix it as synthwave..." : "A cinematic orchestral track with a driving beat..."}
+                className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-pink-500 resize-none h-24 mb-4 text-sm"
               />
               <button
                 onClick={generateMusic}
-                disabled={!prompt || isGenerating}
+                disabled={(!prompt && !selectedAudioFile) || isGenerating}
                 className="w-full bg-pink-500 hover:bg-pink-600 disabled:opacity-50 disabled:hover:bg-pink-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating...
+                    Processing...
                   </>
                 ) : (
                   <>
                     <Wand2 className="w-5 h-5" />
-                    Generate Track
+                    {selectedAudioFile ? 'Enhance Track' : 'Generate Track'}
                   </>
                 )}
               </button>

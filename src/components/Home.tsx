@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Image as ImageIcon, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef, memo } from 'react';
+import { Sparkles, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock, Images } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../ThemeContext';
 
@@ -8,17 +8,8 @@ interface HomeProps {
   recentApps: any[];
 }
 
-export function Home({ onNavigate, recentApps }: HomeProps) {
-  const [currentWidget, setCurrentWidget] = useState(0);
+const ClockWidget = memo(() => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const { iconShape, iconSize } = useTheme();
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentWidget((prev) => (prev + 1) % 3);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     const clockTimer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -31,6 +22,141 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
   };
+
+  return (
+    <div className="w-full mb-6 relative group">
+      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 rounded-[2rem] blur-xl transition-all duration-500 group-hover:blur-2xl" />
+      <div className="relative bg-black/20 dark:bg-black/40 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.1)] rounded-[2rem] p-6 flex flex-col items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-rose-500/20 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="flex items-center gap-1 mb-1 opacity-80">
+           <span className="text-xs font-medium tracking-widest uppercase text-white/90">
+             {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+           </span>
+        </div>
+        
+        <div className="relative">
+          <h1 className="text-[5.5rem] leading-none font-extralight tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 drop-shadow-lg mb-1" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+            {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+          </h1>
+        </div>
+        
+        <div className="flex items-center gap-2 mt-2 bg-white/10 px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
+           <Sparkles className="w-3 h-3 text-rose-300" />
+           <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-white/90">{getGreeting()}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const SmartStackWidget = memo(({ onNavigate }: { onNavigate: (tab: any) => void }) => {
+  const [currentWidget, setCurrentWidget] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    if (isHovered) return;
+    const timer = setInterval(() => {
+      setCurrentWidget((prev) => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isHovered]);
+
+  return (
+    <div 
+      className="w-full h-28 bg-black/20 dark:bg-black/40 rounded-[1.8rem] backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.1)] overflow-hidden relative mb-6"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setIsHovered(false)}
+    >
+      <AnimatePresence mode="wait">
+        {currentWidget === 0 && (
+          <motion.div
+            key="weather"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute inset-0 p-4 flex flex-col justify-between"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-white/80 font-medium text-sm">Cupertino</h3>
+                <h1 className="text-3xl font-light text-white">72°</h1>
+              </div>
+              <Cloud className="w-6 h-6 text-white/90" />
+            </div>
+            <div className="text-white/70 text-xs font-medium">Mostly Cloudy • H:75° L:58°</div>
+          </motion.div>
+        )}
+        {currentWidget === 1 && (
+          <motion.div
+            key="ai"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute inset-0 p-4 flex flex-col justify-between bg-gradient-to-br from-indigo-500/30 to-purple-500/30"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-white/90 font-medium text-sm flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-purple-300" />
+                  Gemini Live
+                </h3>
+                <p className="text-white/70 text-xs mt-0.5">Ready to assist</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => onNavigate('voice')} className="bg-white/20 rounded-xl p-1.5 flex items-center justify-center gap-1.5 flex-1 backdrop-blur-md hover:bg-white/30 transition-colors border border-white/10">
+                <Mic className="w-3.5 h-3.5 text-rose-300" />
+                <span className="text-[10px] text-white font-semibold uppercase tracking-wider">Voice Chat</span>
+              </button>
+              <button onClick={() => onNavigate('whatsapp')} className="bg-white/20 rounded-xl p-1.5 flex items-center justify-center gap-1.5 flex-1 backdrop-blur-md hover:bg-white/30 transition-colors border border-white/10">
+                <MessageCircle className="w-3.5 h-3.5 text-green-300" />
+                <span className="text-[10px] text-white font-semibold uppercase tracking-wider">Message</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+        {currentWidget === 2 && (
+          <motion.div
+            key="calendar"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute inset-0 p-4 flex flex-col justify-between"
+          >
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-rose-400" />
+                <h3 className="text-white/80 font-medium uppercase text-[10px] tracking-wider">Up Next</h3>
+              </div>
+            </div>
+            <div>
+              <h2 className="text-white font-medium text-base">Design Review</h2>
+              <p className="text-white/60 text-xs">1:00 PM - 2:00 PM</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Widget Pagination Dots */}
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-1">
+        {[0, 1, 2].map(i => (
+          <div key={i} className={`w-1 rounded-full transition-all duration-300 ${currentWidget === i ? 'h-2.5 bg-white' : 'h-1 bg-white/30'}`} />
+        ))}
+      </div>
+    </div>
+  );
+});
+
+export function Home({ onNavigate, recentApps }: HomeProps) {
+  const { iconShape, iconSize } = useTheme();
 
   const getIconShapeClass = () => {
     switch (iconShape) {
@@ -50,121 +176,21 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
 
   return (
     <motion.div 
-      className="flex-1 overflow-y-auto p-6 pt-20 pb-40 relative z-10 custom-scrollbar h-full"
+      className="flex-1 overflow-y-auto p-4 pt-16 pb-32 relative z-10 custom-scrollbar h-full"
     >
       <div className="max-w-md mx-auto relative">
         
-        {/* Liquid Glass Clock Widget */}
-        <div className="w-full mb-8 relative group">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-white/5 rounded-[2.5rem] blur-md transition-all duration-500 group-hover:blur-lg" />
-          <div className="relative bg-white/10 dark:bg-white/5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] rounded-[2.5rem] p-8 flex flex-col items-center justify-center overflow-hidden ios-shadow">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="flex items-center gap-1 mb-2 opacity-60">
-               <Sparkles className="w-3 h-3 text-white" />
-               <span className="text-[10px] font-black tracking-[0.2em] uppercase text-white">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
-            </div>
-            <h2 className="text-white/90 text-sm font-medium tracking-widest uppercase mb-2 drop-shadow-md">
-              {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </h2>
-            <h1 className="text-7xl font-light tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 drop-shadow-lg mb-2">
-              {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-            </h1>
-            <p className="text-white/70 text-sm font-medium tracking-wide">{getGreeting()}</p>
-          </div>
-        </div>
-
-        {/* Smart Stack Widget */}
-        <div className="w-full h-32 bg-white/10 dark:bg-white/5 rounded-[2rem] backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] overflow-hidden relative mb-6 ios-shadow">
-          <AnimatePresence mode="wait">
-            {currentWidget === 0 && (
-              <motion.div
-                key="weather"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="absolute inset-0 p-5 flex flex-col justify-between"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-white/80 font-medium">Cupertino</h3>
-                    <h1 className="text-4xl font-light text-white">72°</h1>
-                  </div>
-                  <Cloud className="w-8 h-8 text-white" />
-                </div>
-                <div className="text-white/80 text-sm font-medium">Mostly Cloudy</div>
-              </motion.div>
-            )}
-            {currentWidget === 1 && (
-              <motion.div
-                key="ai"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="absolute inset-0 p-5 flex flex-col justify-between bg-gradient-to-br from-indigo-500/20 to-purple-500/20"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-white/80 font-medium">Siri Suggestions</h3>
-                    <p className="text-white text-sm mt-1">Based on your routine</p>
-                  </div>
-                  <Sparkles className="w-6 h-6 text-purple-400" />
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => onNavigate('whatsapp')} className="bg-white/20 rounded-xl p-2 flex items-center gap-2 flex-1 backdrop-blur-md">
-                    <MessageCircle className="w-4 h-4 text-green-400" />
-                    <span className="text-xs text-white font-medium">Message</span>
-                  </button>
-                  <button onClick={() => onNavigate('voice')} className="bg-white/20 rounded-xl p-2 flex items-center gap-2 flex-1 backdrop-blur-md">
-                    <Mic className="w-4 h-4 text-pink-400" />
-                    <span className="text-xs text-white font-medium">Voice Chat</span>
-                  </button>
-                </div>
-              </motion.div>
-            )}
-            {currentWidget === 2 && (
-              <motion.div
-                key="calendar"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="absolute inset-0 p-5 flex flex-col justify-between"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-red-400" />
-                    <h3 className="text-white/80 font-medium uppercase text-xs tracking-wider">Up Next</h3>
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-white font-medium text-lg">Design Review</h2>
-                  <p className="text-white/60 text-sm">1:00 PM - 2:00 PM</p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
-          {/* Widget Pagination Dots */}
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-1.5">
-            {[0, 1, 2].map(i => (
-              <div key={i} className={`w-1.5 rounded-full transition-all duration-300 ${currentWidget === i ? 'h-3 bg-white' : 'h-1.5 bg-white/30'}`} />
-            ))}
-          </div>
-        </div>
+        <ClockWidget />
+        <SmartStackWidget onNavigate={onNavigate} />
 
         {/* Recently Used Apps Carousel */}
         {recentApps && recentApps.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4 pl-2">
-              <Clock className="w-4 h-4 text-white/60" />
-              <h3 className="text-white/80 font-medium text-sm tracking-wide uppercase">Recently Used</h3>
+          <div className="mb-6">
+            <div className="flex items-center gap-1.5 mb-3 pl-1">
+              <Clock className="w-3.5 h-3.5 text-white/50" />
+              <h3 className="text-white/70 font-medium text-[10px] tracking-widest uppercase">Recent</h3>
             </div>
-            <div className="flex overflow-x-auto hide-scrollbar -mx-6 px-6 gap-4 pb-4 snap-x snap-mandatory">
+            <div className="flex overflow-x-auto hide-scrollbar -mx-4 px-4 gap-3 pb-2 snap-x snap-mandatory">
               {recentApps.map((app, idx) => (
                 <motion.button
                   key={app.id}
@@ -172,30 +198,33 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05, type: 'spring', stiffness: 300, damping: 20 }}
                   onClick={() => onNavigate(app.id)}
-                  className="flex flex-col items-center space-y-2 group snap-start flex-shrink-0"
+                  className="flex flex-col items-center space-y-1.5 group snap-start flex-shrink-0"
                 >
-                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} bg-white/10 dark:bg-white/5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_16px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
+                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-                    <app.icon className={`w-8 h-8 ${app.color} drop-shadow-md relative z-10`} strokeWidth={1.5} />
+                    <app.icon className={`w-6 h-6 sm:w-7 sm:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
                   </div>
-                  <span className="text-xs font-medium text-white/90 truncate w-16 text-center drop-shadow-md tracking-wide">{app.name}</span>
+                  <span className="text-[10px] font-medium text-white/90 truncate w-14 text-center drop-shadow-md tracking-wide">{app.name}</span>
                 </motion.button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <button onClick={() => onNavigate('browser')} className="bg-white/10 dark:bg-white/5 rounded-[2rem] p-5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] flex flex-col items-center justify-center gap-3 hover:scale-105 transition-all relative group overflow-hidden">
+        {/* Quick Actions - Compact */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <button onClick={() => onNavigate('voice')} className="bg-gradient-to-br from-rose-500/20 to-orange-500/20 rounded-[1.8rem] p-4 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all relative group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-            <Globe className="w-8 h-8 text-blue-400 drop-shadow-md relative z-10" />
-            <span className="text-white font-medium relative z-10 drop-shadow-sm">Browser</span>
+            <div className="relative">
+              <div className="absolute inset-0 bg-rose-500/40 rounded-full blur-md animate-pulse" />
+              <Mic className="w-7 h-7 text-rose-300 drop-shadow-md relative z-10" />
+            </div>
+            <span className="text-white/90 font-medium text-xs relative z-10 drop-shadow-sm">Gemini Voice</span>
           </button>
-          <button onClick={() => onNavigate('gallery')} className="bg-white/10 dark:bg-white/5 rounded-[2rem] p-5 backdrop-blur-[40px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.3)] flex flex-col items-center justify-center gap-3 hover:scale-105 transition-all relative group overflow-hidden">
+          <button onClick={() => onNavigate('gallery')} className="bg-black/20 dark:bg-black/40 rounded-[1.8rem] p-4 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all relative group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-            <ImageIcon className="w-8 h-8 text-purple-400 drop-shadow-md relative z-10" />
-            <span className="text-white font-medium relative z-10 drop-shadow-sm">Photos</span>
+            <Images className="w-7 h-7 text-purple-400 drop-shadow-md relative z-10" />
+            <span className="text-white/90 font-medium text-xs relative z-10 drop-shadow-sm">Photos</span>
           </button>
         </div>
 

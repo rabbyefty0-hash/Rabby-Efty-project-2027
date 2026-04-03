@@ -134,15 +134,41 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
         callbacks: {
           onopen: async () => {
             try {
-              const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                  echoCancellation: true,
-                  noiseSuppression: true,
-                  autoGainControl: true,
-                  channelCount: 1 
-                },
-                video: isCameraEnabled ? { facingMode: 'environment' } : false
-              });
+              let stream: MediaStream;
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                  audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true
+                  },
+                  video: isCameraEnabled ? { facingMode: 'environment' } : false
+                });
+              } catch (err: any) {
+                console.warn("Initial getUserMedia failed, trying fallback:", err);
+                if (isCameraEnabled) {
+                  try {
+                    // Fallback to any camera and simpler audio constraints
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                      audio: true,
+                      video: true
+                    });
+                  } catch (fallbackErr) {
+                    console.error("Fallback getUserMedia failed:", fallbackErr);
+                    throw fallbackErr;
+                  }
+                } else {
+                  try {
+                    // Fallback to simpler audio constraints
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                      audio: true,
+                      video: false
+                    });
+                  } catch (fallbackErr) {
+                    console.error("Fallback audio getUserMedia failed:", fallbackErr);
+                    throw fallbackErr;
+                  }
+                }
+              }
               streamRef.current = stream;
               
               if (isCameraEnabled && videoRef.current) {
@@ -199,9 +225,17 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
 
               setIsConnected(true);
               setIsConnecting(false);
-            } catch (err) {
+            } catch (err: any) {
               console.error("Mic/Camera error:", err);
-              setError("Could not access microphone or camera.");
+              if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                setError("Permission denied. Please allow camera and microphone access in your browser settings.");
+              } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                setError("No microphone or camera found on this device.");
+              } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                setError("Camera or microphone is already in use by another application.");
+              } else {
+                setError(`Could not access media devices: ${err.message || err.name || 'Unknown error'}`);
+              }
               disconnect();
             }
           },
@@ -400,18 +434,23 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
             </div>
           )}
 
-          <div className="relative flex items-center justify-center py-8">
+          <div className="relative flex items-center justify-center py-12">
           {isConnected && !isCameraEnabled && (
             <>
               <motion.div
-                animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0.1, 0.3] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute w-48 h-48 bg-indigo-500 rounded-full blur-2xl"
+                animate={{ scale: [1, 1.4, 1], rotate: [0, 90, 180, 270, 360], opacity: [0.5, 0.8, 0.5] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute w-56 h-56 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-full blur-3xl opacity-50 mix-blend-screen"
               />
               <motion.div
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.2, 0.5] }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-                className="absolute w-40 h-40 bg-purple-500 rounded-full blur-xl"
+                animate={{ scale: [1, 1.2, 1], rotate: [360, 270, 180, 90, 0], opacity: [0.4, 0.7, 0.4] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute w-48 h-48 bg-gradient-to-bl from-rose-500 to-orange-500 rounded-full blur-2xl opacity-40 mix-blend-screen"
+              />
+              <motion.div
+                animate={{ scale: [0.8, 1.1, 0.8], opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute w-32 h-32 bg-white/20 rounded-full blur-xl"
               />
             </>
           )}
@@ -431,18 +470,19 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
             <button
               onClick={isConnected ? disconnect : connect}
               disabled={isConnecting}
-              className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 liquid-glass ${
+              className={`w-32 h-32 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 relative group overflow-hidden ${
                 isConnected 
-                  ? 'bg-red-500 hover:bg-red-600 text-white' 
-                  : 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                  ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400/50' 
+                  : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
               } ${isConnecting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
             >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-50 pointer-events-none" />
               {isConnecting ? (
-                <Loader2 className="w-12 h-12 animate-spin" />
+                <Loader2 className="w-12 h-12 animate-spin relative z-10" />
               ) : isConnected ? (
-                <MicOff className="w-12 h-12" />
+                <MicOff className="w-12 h-12 relative z-10 drop-shadow-md" />
               ) : (
-                <Mic className="w-12 h-12" />
+                <Mic className="w-12 h-12 relative z-10 drop-shadow-md" />
               )}
             </button>
             
