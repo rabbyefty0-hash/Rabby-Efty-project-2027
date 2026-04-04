@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Sparkles, Image as ImageIcon, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Search, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Settings, Palette, ImagePlus, Images, Wand2 } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Search, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Settings, Palette, ImagePlus, Images, Wand2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../ThemeContext';
 
@@ -103,23 +103,43 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
     }
   };
 
-  const renderAppIcon = (app: any, idx: number, size: 'normal' | 'mini' = 'normal') => {
-    const isMini = size === 'mini';
-    const sizeClass = isMini ? 'w-full h-full' : getIconSizeClass();
-    const iconSizeClass = isMini ? 'w-1/2 h-1/2' : 'w-6 h-6 sm:w-8 sm:h-8';
-    
+  const renderAppIcon = (app: any, idx: number, mode: 'normal' | 'library-large' | 'library-small' = 'normal') => {
+    if (mode === 'library-large') {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate(app.id);
+          }}
+          className="w-full h-full flex items-center justify-center active:opacity-70 group"
+        >
+          <div className={`w-[85%] h-[85%] ${getIconShapeClass()} ${app.bg} flex items-center justify-center shadow-sm transition-transform group-active:scale-90`}>
+            <app.icon className="w-1/2 h-1/2 text-white drop-shadow-md" strokeWidth={1.5} />
+          </div>
+        </button>
+      );
+    }
+
+    if (mode === 'library-small') {
+      return (
+        <div className={`w-full h-full ${getIconShapeClass()} ${app.bg} flex items-center justify-center shadow-sm`}>
+          <app.icon className="w-1/2 h-1/2 text-white drop-shadow-sm" strokeWidth={1.5} />
+        </div>
+      );
+    }
+
     return (
       <motion.div
         key={app.id}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: idx * 0.02, type: 'spring', stiffness: 300, damping: 20 }}
-        className={`relative flex flex-col items-center ${isMini ? 'w-full h-full' : ''}`}
+        className="relative flex flex-col items-center"
       >
         {isLoading ? (
-          <div className={`flex flex-col items-center space-y-1.5 w-full animate-pulse ${isMini ? '' : 'p-1'}`}>
-            <div className={`${sizeClass} ${getIconShapeClass()} bg-white/10`} />
-            {!isMini && <div className="h-3 w-12 bg-white/10 rounded-full mt-1" />}
+          <div className="flex flex-col items-center space-y-1.5 w-full animate-pulse p-1">
+            <div className={`${getIconSizeClass()} ${getIconShapeClass()} bg-white/10`} />
+            <div className="h-3 w-12 bg-white/10 rounded-full mt-1" />
           </div>
         ) : (
           <button
@@ -127,14 +147,12 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
               e.stopPropagation();
               onNavigate(app.id);
             }}
-            className={`flex flex-col items-center group w-full active:opacity-70 ${isMini ? 'h-full' : 'space-y-1.5 p-1'}`}
+            className="flex flex-col items-center group w-full active:opacity-70 space-y-1.5 p-1"
           >
-            <div className={`${sizeClass} ${getIconShapeClass()} ${app.bg} flex items-center justify-center mx-auto ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 shadow-sm`}>
-              <app.icon className={`${iconSizeClass} ${app.color} drop-shadow-md relative z-10`} strokeWidth={1.5} />
+            <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg} flex items-center justify-center mx-auto ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 shadow-sm`}>
+              <app.icon className={`w-6 h-6 sm:w-8 sm:h-8 ${app.color} drop-shadow-md relative z-10`} strokeWidth={1.5} />
             </div>
-            {!isMini && (
-              <span className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
-            )}
+            <span className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
           </button>
         )}
       </motion.div>
@@ -142,94 +160,114 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
   };
 
   return (
-    <div className="flex-1 overflow-y-auto relative z-10 custom-scrollbar h-full w-full">
-      <div className="max-w-md mx-auto relative px-6">
-        {/* Sticky Search Bar */}
-        <div className="sticky top-0 z-50 pt-14 pb-4 bg-zinc-950/80 backdrop-blur-xl -mx-6 px-6 mb-6">
-          <div className="relative z-10">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="App Library"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/10 dark:bg-black/40 border border-white/20 rounded-2xl py-3 pl-12 pr-4 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-xl shadow-lg"
-            />
+    <div className="relative w-full h-full flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto relative z-10 custom-scrollbar h-full w-full">
+        <div className="max-w-md mx-auto relative px-6">
+          {/* Sticky Search Bar */}
+          <div className="sticky top-0 z-40 pt-14 pb-4 bg-zinc-950/80 backdrop-blur-xl -mx-6 px-6 mb-6">
+            <div className="relative z-10">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="App Library"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/10 dark:bg-black/40 border border-white/20 rounded-2xl py-3 pl-12 pr-4 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-xl shadow-lg"
+              />
+            </div>
           </div>
-        </div>
 
-        {searchQuery ? (
-          <div className="grid grid-cols-4 gap-x-2 sm:gap-x-4 gap-y-6 content-start px-1 sm:px-2 pb-8">
-            {filteredApps.map((app, idx) => renderAppIcon(app, idx))}
-            {filteredApps.length === 0 && (
-              <div className="col-span-4 text-center py-12 text-white/50">
-                No apps found matching "{searchQuery}"
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 pb-8">
-            {CATEGORIES.map((category, catIdx) => {
-              const categoryApps = category.apps.map(id => APPS.find(a => a.id === id)).filter(Boolean);
-              if (categoryApps.length === 0) return null;
-              
-              const isExpanded = expandedCategory === category.name;
-              
-              return (
-                <motion.div 
-                  key={category.name}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: catIdx * 0.1 }}
-                  className={`flex flex-col ${isExpanded ? 'col-span-2' : 'col-span-1'}`}
-                >
-                  <div className="flex justify-between items-center px-2 mb-2">
-                    <h3 className="text-white/90 font-medium text-sm tracking-tight">{category.name}</h3>
-                  </div>
-                  
-                  <div 
-                    className={`bg-white/10 border border-white/10 rounded-3xl p-3 backdrop-blur-md shadow-lg transition-all duration-300 ${isExpanded ? 'bg-white/15' : 'hover:bg-white/15 cursor-pointer'}`}
-                    onClick={() => !isExpanded && setExpandedCategory(category.name)}
+          {searchQuery ? (
+            <div className="grid grid-cols-4 gap-x-2 sm:gap-x-4 gap-y-6 content-start px-1 sm:px-2 pb-8">
+              {filteredApps.map((app, idx) => renderAppIcon(app, idx, 'normal'))}
+              {filteredApps.length === 0 && (
+                <div className="col-span-4 text-center py-12 text-white/50">
+                  No apps found matching "{searchQuery}"
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 pb-8">
+              {CATEGORIES.map((category, catIdx) => {
+                const categoryApps = category.apps.map(id => APPS.find(a => a.id === id)).filter(Boolean);
+                if (categoryApps.length === 0) return null;
+                
+                return (
+                  <motion.div 
+                    key={category.name}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: catIdx * 0.1 }}
+                    className="flex flex-col"
                   >
-                    {isExpanded ? (
-                      <div className="relative">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedCategory(null);
-                          }}
-                          className="absolute -top-2 -right-2 bg-white/20 hover:bg-white/30 p-1.5 rounded-full backdrop-blur-md z-10 transition-colors"
-                        >
-                          <Search className="w-4 h-4 text-white" />
-                        </button>
-                        <div className="grid grid-cols-4 gap-3 pt-2">
-                          {categoryApps.map((app, idx) => renderAppIcon(app, idx))}
-                        </div>
+                    <div className="flex justify-between items-center px-3 mb-1.5">
+                      <h3 className="text-white/90 font-medium text-[13px] tracking-wide">{category.name}</h3>
+                    </div>
+                    
+                    <div className="bg-white/10 border border-white/10 rounded-[2rem] p-3 backdrop-blur-md shadow-lg aspect-square">
+                      <div className="grid grid-cols-2 gap-2 w-full h-full">
+                        {categoryApps[0] && <div className="w-full h-full">{renderAppIcon(categoryApps[0], 0, 'library-large')}</div>}
+                        {categoryApps[1] && <div className="w-full h-full">{renderAppIcon(categoryApps[1], 1, 'library-large')}</div>}
+                        {categoryApps[2] && <div className="w-full h-full">{renderAppIcon(categoryApps[2], 2, 'library-large')}</div>}
+                        
+                        {categoryApps.length > 4 ? (
+                          <button 
+                            onClick={() => setExpandedCategory(category.name)}
+                            className="w-full h-full grid grid-cols-2 gap-1.5 p-1 active:opacity-70 group"
+                          >
+                            {categoryApps.slice(3, 7).map((app, i) => (
+                              <div key={app?.id || i} className="w-full h-full transition-transform group-active:scale-95">
+                                {renderAppIcon(app, i, 'library-small')}
+                              </div>
+                            ))}
+                          </button>
+                        ) : categoryApps[3] ? (
+                          <div className="w-full h-full">{renderAppIcon(categoryApps[3], 3, 'library-large')}</div>
+                        ) : null}
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2 aspect-square">
-                        {categoryApps.slice(0, 4).map((app, idx) => (
-                          <div key={app?.id || idx} className="w-full h-full">
-                            {renderAppIcon(app, idx, 'mini')}
-                          </div>
-                        ))}
-                        {/* Fill empty spots if less than 4 apps */}
-                        {Array.from({ length: Math.max(0, 4 - categoryApps.length) }).map((_, i) => (
-                          <div key={`empty-${i}`} className="w-full h-full rounded-xl bg-white/5" />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-        
-        {/* Bottom Spacer for Dock */}
-        <div className="h-48 w-full shrink-0" />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+          
+          {/* Bottom Spacer for Dock */}
+          <div className="h-48 w-full shrink-0" />
+        </div>
       </div>
+
+      {/* Expanded Category Overlay */}
+      <AnimatePresence>
+        {expandedCategory && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="absolute inset-0 z-[60] bg-zinc-900/80 backdrop-blur-3xl flex flex-col"
+          >
+            <div className="pt-14 pb-6 px-6 flex justify-between items-center">
+              <h2 className="text-2xl font-semibold text-white tracking-tight">{expandedCategory}</h2>
+              <button 
+                onClick={() => setExpandedCategory(null)} 
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 pb-24 custom-scrollbar">
+              <div className="grid grid-cols-4 gap-x-2 sm:gap-x-4 gap-y-6 content-start">
+                {CATEGORIES.find(c => c.name === expandedCategory)?.apps
+                  .map(id => APPS.find(a => a.id === id))
+                  .filter(Boolean)
+                  .map((app, idx) => renderAppIcon(app, idx, 'normal'))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
