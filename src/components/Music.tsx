@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X } from 'lucide-react';
+import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X, SkipBack, SkipForward } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAllFiles, VFSNode, verifyPermission } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
@@ -12,8 +12,10 @@ interface MusicProps {
 export function MusicApp({ onBack }: MusicProps) {
   const [activeTab, setActiveTab] = useState<'library' | 'ai'>('library');
   const [audioFiles, setAudioFiles] = useState<VFSNode[]>([]);
-  const [currentTrack, setCurrentTrack] = useState<{ url: string, name: string } | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<{ url: string, name: string, index: number, source: 'library' | 'ai' } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // AI State
@@ -35,7 +37,7 @@ export function MusicApp({ onBack }: MusicProps) {
     setAudioFiles(audio);
   };
 
-  const playTrack = (url: string, name: string) => {
+  const playTrack = (url: string, name: string, index: number, source: 'library' | 'ai') => {
     if (currentTrack?.url === url) {
       if (isPlaying) {
         audioRef.current?.pause();
@@ -44,7 +46,7 @@ export function MusicApp({ onBack }: MusicProps) {
       }
       setIsPlaying(!isPlaying);
     } else {
-      setCurrentTrack({ url, name });
+      setCurrentTrack({ url, name, index, source });
       setIsPlaying(true);
       if (audioRef.current) {
         audioRef.current.src = url;
@@ -73,11 +75,74 @@ export function MusicApp({ onBack }: MusicProps) {
     return null;
   };
 
-  const handlePlayNode = async (node: VFSNode) => {
+  const handlePlayNode = async (node: VFSNode, index: number) => {
     const url = await getFileUrl(node);
     if (url) {
-      playTrack(url, node.name);
+      playTrack(url, node.name, index, 'library');
     }
+  };
+
+  const handleNext = async () => {
+    if (!currentTrack) return;
+    if (currentTrack.source === 'library') {
+      if (audioFiles.length === 0) return;
+      const nextIndex = (currentTrack.index + 1) % audioFiles.length;
+      const node = audioFiles[nextIndex];
+      if (node) {
+        const url = await getFileUrl(node);
+        if (url) playTrack(url, node.name, nextIndex, 'library');
+      }
+    } else {
+      if (generatedTracks.length === 0) return;
+      const nextIndex = (currentTrack.index + 1) % generatedTracks.length;
+      const track = generatedTracks[nextIndex];
+      if (track) playTrack(track.url, track.name, nextIndex, 'ai');
+    }
+  };
+
+  const handlePrev = async () => {
+    if (!currentTrack) return;
+    if (currentTrack.source === 'library') {
+      if (audioFiles.length === 0) return;
+      const prevIndex = (currentTrack.index - 1 + audioFiles.length) % audioFiles.length;
+      const node = audioFiles[prevIndex];
+      if (node) {
+        const url = await getFileUrl(node);
+        if (url) playTrack(url, node.name, prevIndex, 'library');
+      }
+    } else {
+      if (generatedTracks.length === 0) return;
+      const prevIndex = (currentTrack.index - 1 + generatedTracks.length) % generatedTracks.length;
+      const track = generatedTracks[prevIndex];
+      if (track) playTrack(track.url, track.name, prevIndex, 'ai');
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setProgress(audioRef.current.currentTime);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = Number(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setProgress(time);
+    }
+  };
+
+  const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const generateMusic = async () => {
@@ -177,7 +242,7 @@ export function MusicApp({ onBack }: MusicProps) {
         
         const newTrack = { url: audioUrl, name: prompt.slice(0, 30) + (prompt.length > 30 ? "..." : "") };
         setGeneratedTracks(prev => [newTrack, ...prev]);
-        playTrack(audioUrl, newTrack.name);
+        playTrack(audioUrl, newTrack.name, 0, 'ai');
       }
     } catch (error) {
       console.error("Error generating music:", error);
@@ -218,7 +283,7 @@ export function MusicApp({ onBack }: MusicProps) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 pb-32 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 pb-40 custom-scrollbar">
         {activeTab === 'library' ? (
           <div className="space-y-2">
             {audioFiles.length === 0 ? (
@@ -228,10 +293,10 @@ export function MusicApp({ onBack }: MusicProps) {
                 <p className="text-sm mt-2 text-center">Upload files in the File Manager app<br/>to see them here.</p>
               </div>
             ) : (
-              audioFiles.map(file => (
+              audioFiles.map((file, idx) => (
                 <div 
                   key={file.id}
-                  onClick={() => handlePlayNode(file)}
+                  onClick={() => handlePlayNode(file, idx)}
                   className="flex items-center gap-4 p-3 bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer transition-colors"
                 >
                   <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center text-pink-500">
@@ -242,7 +307,7 @@ export function MusicApp({ onBack }: MusicProps) {
                     <p className="text-xs text-white/50">{new Date(file.createdAt).toLocaleDateString()}</p>
                   </div>
                   <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white">
-                    {currentTrack?.name === file.name && isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}
+                    {currentTrack?.name === file.name && isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 ml-1 fill-current" />}
                   </button>
                 </div>
               ))
@@ -328,7 +393,7 @@ export function MusicApp({ onBack }: MusicProps) {
                 {generatedTracks.map((track, idx) => (
                   <div 
                     key={idx}
-                    onClick={() => playTrack(track.url, track.name)}
+                    onClick={() => playTrack(track.url, track.name, idx, 'ai')}
                     className="flex items-center gap-4 p-3 bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer transition-colors"
                   >
                     <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">
@@ -339,7 +404,7 @@ export function MusicApp({ onBack }: MusicProps) {
                       <p className="text-xs text-white/50">AI Generated</p>
                     </div>
                     <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white">
-                      {currentTrack?.url === track.url && isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-1" />}
+                      {currentTrack?.url === track.url && isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 ml-1 fill-current" />}
                     </button>
                   </div>
                 ))}
@@ -353,31 +418,59 @@ export function MusicApp({ onBack }: MusicProps) {
       <AnimatePresence>
         {currentTrack && (
           <motion.div
-            initial={{ y: 100 }}
+            initial={{ y: 150 }}
             animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-white/10 p-4 pb-safe"
+            exit={{ y: 150 }}
+            className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-white/10 p-4 pb-safe flex flex-col gap-3 z-20"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                <MusicIcon className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">{currentTrack.name}</p>
-                <p className="text-xs text-white/60">Now Playing</p>
-              </div>
-              <button 
-                onClick={() => playTrack(currentTrack.url, currentTrack.name)}
-                className="w-12 h-12 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 active:scale-95 transition-transform"
-              >
-                {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
-              </button>
+            {/* Progress Bar */}
+            <div className="flex items-center gap-3 text-xs text-white/50">
+              <span className="w-8 text-right">{formatTime(progress)}</span>
+              <input 
+                type="range" 
+                min={0} 
+                max={duration || 100} 
+                value={progress} 
+                onChange={handleSeek}
+                className="flex-1 h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+              />
+              <span className="w-8">{formatTime(duration)}</span>
             </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+                  <MusicIcon className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0 pr-4">
+                  <p className="font-semibold truncate text-sm">{currentTrack.name}</p>
+                  <p className="text-xs text-white/60 truncate">Now Playing</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 shrink-0">
+                <button onClick={handlePrev} className="text-white/70 hover:text-white transition-colors">
+                  <SkipBack className="w-6 h-6 fill-current" />
+                </button>
+                <button 
+                  onClick={() => playTrack(currentTrack.url, currentTrack.name, currentTrack.index, currentTrack.source)}
+                  className="w-12 h-12 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 active:scale-95 transition-transform"
+                >
+                  {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 ml-1 fill-current" />}
+                </button>
+                <button onClick={handleNext} className="text-white/70 hover:text-white transition-colors">
+                  <SkipForward className="w-6 h-6 fill-current" />
+                </button>
+              </div>
+            </div>
+            
             <audio 
               ref={audioRef} 
-              onEnded={() => setIsPlaying(false)}
+              onEnded={handleNext}
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
               className="hidden" 
             />
           </motion.div>

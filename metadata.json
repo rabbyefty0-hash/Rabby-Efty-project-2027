@@ -3,6 +3,7 @@
   "description": "A comprehensive suite for AI creativity and intelligence, featuring image generation, video creation, real-time voice, search grounding, and deep reasoning.",
   "requestFramePermissions": [
     "microphone",
-    "camera"
+    "camera",
+    "geolocation"
   ]
 }

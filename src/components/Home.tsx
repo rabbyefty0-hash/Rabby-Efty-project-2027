@@ -24,7 +24,7 @@ const ClockWidget = memo(() => {
   };
 
   return (
-    <div className="w-full mb-6 relative group">
+    <div className="w-full relative group">
       <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 rounded-[2rem] blur-xl transition-all duration-500 group-hover:blur-2xl" />
       <div className="relative bg-black/20 dark:bg-black/40 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.1)] rounded-[2rem] p-6 flex flex-col items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
@@ -66,7 +66,7 @@ const SmartStackWidget = memo(({ onNavigate }: { onNavigate: (tab: any) => void 
 
   return (
     <div 
-      className="w-full h-28 bg-black/20 dark:bg-black/40 rounded-[1.8rem] backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.1)] overflow-hidden relative mb-6"
+      className="w-full h-full min-h-[7rem] bg-black/20 dark:bg-black/40 rounded-[1.8rem] backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.1)] overflow-hidden relative"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={() => setIsHovered(true)}
@@ -178,10 +178,12 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
     <motion.div 
       className="flex-1 overflow-y-auto p-4 pt-16 pb-32 relative z-10 custom-scrollbar h-full"
     >
-      <div className="max-w-md mx-auto relative">
+      <div className="max-w-5xl mx-auto relative">
         
-        <ClockWidget />
-        <SmartStackWidget onNavigate={onNavigate} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <ClockWidget />
+          <SmartStackWidget onNavigate={onNavigate} />
+        </div>
 
         {/* Recently Used Apps Carousel */}
         {recentApps && recentApps.length > 0 && (
@@ -212,7 +214,7 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
         )}
 
         {/* Quick Actions - Compact */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <button onClick={() => onNavigate('voice')} className="bg-gradient-to-br from-rose-500/20 to-orange-500/20 rounded-[1.8rem] p-4 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all relative group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
             <div className="relative">
@@ -225,6 +227,11 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
             <Images className="w-7 h-7 text-purple-400 drop-shadow-md relative z-10" />
             <span className="text-white/90 font-medium text-xs relative z-10 drop-shadow-sm">Photos</span>
+          </button>
+          <button onClick={() => onNavigate('file-manager')} className="bg-black/20 dark:bg-black/40 rounded-[1.8rem] p-4 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
+            <Folder className="w-7 h-7 text-blue-400 drop-shadow-md relative z-10" />
+            <span className="text-white/90 font-medium text-xs relative z-10 drop-shadow-sm">Files</span>
           </button>
         </div>
 

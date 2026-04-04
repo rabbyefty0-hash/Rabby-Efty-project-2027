@@ -113,7 +113,7 @@ export function Weather({ onBack }: WeatherProps) {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar"
+          className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar max-w-2xl mx-auto w-full"
         >
           <div className="flex items-center justify-center space-x-2 mb-8">
             <MapPin className="w-5 h-5 opacity-80" />

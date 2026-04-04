@@ -9,30 +9,52 @@ interface MapsProps {
 export function MapsApp({ onBack }: MapsProps) {
   const [location, setLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [destination, setDestination] = useState('');
+  const [showDirections, setShowDirections] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [permissionStatus, setPermissionStatus] = useState<PermissionState | 'unknown'>('unknown');
 
   useEffect(() => {
+    checkPermissionAndLocate();
+  }, []);
+
+  const checkPermissionAndLocate = async () => {
+    setLoading(true);
+    if ('permissions' in navigator) {
+      try {
+        const result = await navigator.permissions.query({ name: 'geolocation' });
+        setPermissionStatus(result.state);
+        result.onchange = () => setPermissionStatus(result.state);
+      } catch (e) {
+        console.error("Permission query error", e);
+      }
+    }
+
     if ("geolocation" in navigator) {
+      // Request foreground location
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setLocation({
             lat: position.coords.latitude,
             lon: position.coords.longitude
           });
+          setPermissionStatus('granted');
           setLoading(false);
         },
         (err) => {
           console.error("Geolocation error", err);
+          setPermissionStatus('denied');
           // Fallback to San Francisco
           setLocation({ lat: 37.7749, lon: -122.4194 });
           setLoading(false);
-        }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       setLocation({ lat: 37.7749, lon: -122.4194 });
       setLoading(false);
     }
-  }, []);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,19 +75,25 @@ export function MapsApp({ onBack }: MapsProps) {
   };
 
   const handleLocateMe = () => {
-    setLoading(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            lat: position.coords.latitude,
-            lon: position.coords.longitude
-          });
-          setLoading(false);
-        },
-        () => setLoading(false)
-      );
+    checkPermissionAndLocate();
+  };
+
+  const toggleDirections = () => {
+    setShowDirections(!showDirections);
+    if (!showDirections) {
+      setDestination(searchQuery);
     }
+  };
+
+  const getMapUrl = () => {
+    if (!location) return '';
+    if (showDirections && destination) {
+      // Note: Full turn-by-turn directions in iframe requires Google Maps Embed API with an API key.
+      // This is a fallback that opens the standard map with a query, or you can use the standard embed.
+      // For a real app, you'd use: https://www.google.com/maps/embed/v1/directions?key=YOUR_API_KEY&origin=${location.lat},${location.lon}&destination=${encodeURIComponent(destination)}
+      return `https://maps.google.com/maps?saddr=${location.lat},${location.lon}&daddr=${encodeURIComponent(destination)}&output=embed`;
+    }
+    return `https://maps.google.com/maps?q=${location.lat},${location.lon}&t=m&z=14&output=embed&iwloc=near`;
   };
 
   return (
@@ -81,14 +109,21 @@ export function MapsApp({ onBack }: MapsProps) {
         <form onSubmit={handleSearch} className="flex-1 relative">
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search Google Maps"
+            value={showDirections ? destination : searchQuery}
+            onChange={(e) => showDirections ? setDestination(e.target.value) : setSearchQuery(e.target.value)}
+            placeholder={showDirections ? "Enter destination..." : "Search Google Maps"}
             className="w-full bg-white/90 backdrop-blur-md rounded-full py-3 pl-12 pr-4 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800"
           />
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
         </form>
       </div>
+
+      {permissionStatus === 'denied' && (
+        <div className="absolute top-24 left-4 right-4 z-20 bg-red-500 text-white p-3 rounded-xl shadow-lg text-sm flex items-center justify-between">
+          <span>Location access denied. Please enable it in your browser settings.</span>
+          <button onClick={() => setPermissionStatus('unknown')} className="underline">Dismiss</button>
+        </div>
+      )}
 
       <div className="flex-1 relative bg-gray-200">
         {loading && (
@@ -106,7 +141,7 @@ export function MapsApp({ onBack }: MapsProps) {
             scrolling="no"
             marginHeight={0}
             marginWidth={0}
-            src={`https://maps.google.com/maps?q=${location.lat},${location.lon}&t=m&z=14&output=embed&iwloc=near`}
+            src={getMapUrl()}
             className="absolute inset-0 w-full h-full border-none"
           />
         )}
@@ -127,8 +162,9 @@ export function MapsApp({ onBack }: MapsProps) {
           <Crosshair className="w-6 h-6" />
         </button>
         <button 
-          className="p-4 bg-blue-500 rounded-full shadow-lg text-white hover:bg-blue-600 transition-colors mt-2"
-          title="Directions"
+          onClick={toggleDirections}
+          className={`p-4 rounded-full shadow-lg transition-colors mt-2 ${showDirections ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+          title={showDirections ? "Cancel Directions" : "Directions"}
         >
           <Navigation className="w-6 h-6" />
         </button>

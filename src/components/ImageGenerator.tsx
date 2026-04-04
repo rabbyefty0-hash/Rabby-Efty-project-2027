@@ -1,11 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Image as ImageIcon, Loader2, Download, Upload, X, Wand2, Crop, Maximize, Settings2, Sparkles, Sun, Contrast, Droplets, Palette, RotateCcw, ShieldCheck, ZoomIn, ZoomOut, History, Trash2, Zap, Save } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Download, Upload, X, Wand2, Crop, Maximize, Settings2, Sparkles, Sun, Contrast, Droplets, Palette, RotateCcw, ShieldCheck, ZoomIn, ZoomOut, History, Trash2, Zap, Save, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card } from './ui/card';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../ThemeContext';
+
+declare global {
+  interface Window {
+    aistudio?: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
 
 interface ImageGeneratorProps {
   isVpnConnected?: boolean;
@@ -363,9 +372,20 @@ export function ImageGenerator({ isVpnConnected }: ImageGeneratorProps) {
     } catch (err: any) {
       console.error(err);
       const errorMessage = err?.message || '';
-      const errorString = typeof err === 'object' ? JSON.stringify(err) : String(err);
+      let displayError = errorMessage;
       
-      setError(errorMessage || errorString || 'Failed to generate image');
+      if (errorMessage.includes('PERMISSION_DENIED') || errorMessage.includes('403')) {
+        displayError = 'Permission denied. Please ensure your API key has access to this model.';
+      } else if (errorMessage.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(errorMessage);
+          if (parsed.error && parsed.error.message) {
+            displayError = parsed.error.message;
+          }
+        } catch (e) {}
+      }
+      
+      setError(displayError || (typeof err === 'object' ? JSON.stringify(err) : String(err)) || 'Failed to generate image');
     } finally {
       setIsGenerating(false);
     }

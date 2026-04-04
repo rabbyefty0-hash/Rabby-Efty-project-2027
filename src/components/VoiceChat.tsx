@@ -78,6 +78,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
       
       utterance.rate = 1.0;
       utterance.pitch = 1.1;
+      utterance.volume = 1.0;
       
       window.speechSynthesis.speak(utterance);
     }
@@ -127,7 +128,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } }
           },
-          systemInstruction: "You are ꧁Rᴀʙʙʏ Eғᴛʏ꧂, a helpful and friendly AI assistant. You are part of the ꧁Rᴀʙʙʏ Eғᴛʏ꧂ suite of tools. Keep your responses concise and conversational. Always identify yourself as ꧁Rᴀʙʙʏ Eғᴛʏ꧂ if asked. If the user shares video, comment on what you see.",
+          systemInstruction: "You are ꧁Rᴀʙʙʏ Eғᴛʏ꧂, a helpful and friendly AI assistant. You are part of the ꧁Rᴀʙʙʏ Eғᴛʏ꧂ suite of tools. Keep your responses concise and conversational. Always identify yourself as ꧁Rᴀʙʙʏ Eғᴛʏ꧂ if asked. If the user shares video, comment on what you see. Ensure consistent voice volume and clarity throughout the response. Maintain a steady and natural tone without fluctuations.",
           outputAudioTranscription: {},
           inputAudioTranscription: {},
         },
@@ -252,7 +253,12 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
                 for (let i = 0; i < binary.length; i++) {
                   buffer[i] = binary.charCodeAt(i);
                 }
-                const pcm16 = new Int16Array(buffer.buffer);
+                
+                // Ensure the buffer length is a multiple of 2 for Int16Array
+                const validLength = buffer.length - (buffer.length % 2);
+                const validBuffer = buffer.slice(0, validLength);
+                
+                const pcm16 = new Int16Array(validBuffer.buffer);
                 const float32 = new Float32Array(pcm16.length);
                 for (let i = 0; i < pcm16.length; i++) {
                   float32[i] = pcm16[i] / 0x7FFF;

@@ -66,6 +66,7 @@ export function Chatbot({ messages, onSendMessage, onClearChat, onStopGeneration
       if (preferredVoice) utterance.voice = preferredVoice;
       utterance.rate = 1.0;
       utterance.pitch = 1.1;
+      utterance.volume = 1.0;
       window.speechSynthesis.speak(utterance);
     }
   };

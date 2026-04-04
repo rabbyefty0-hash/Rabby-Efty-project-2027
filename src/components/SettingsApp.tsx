@@ -49,14 +49,14 @@ export function SettingsApp({ onBack }: { onBack: () => void }) {
   return (
     <div className="flex flex-col h-full bg-[#1c1c1e] text-white overflow-y-auto custom-scrollbar">
       <div className="sticky top-0 z-10 bg-[#1c1c1e]/80 backdrop-blur-xl border-b border-white/10 px-4 py-3 pt-10 flex items-center">
-        <button onClick={onBack} className="text-[#0a84ff] flex items-center font-medium">
+        <button onClick={onBack} className="text-primary flex items-center font-medium">
           <ArrowLeft className="w-5 h-5 mr-1" />
           Back
         </button>
         <h1 className="text-lg font-semibold mx-auto -ml-8">Personalization</h1>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div className="p-4 max-w-4xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Accent Color */}
         <div className="bg-[#2c2c2e] rounded-xl p-4">
           <div className="flex items-center mb-4 text-white/80">
@@ -135,7 +135,7 @@ export function SettingsApp({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* Wallpaper */}
-        <div className="bg-[#2c2c2e] rounded-xl p-4">
+        <div className="bg-[#2c2c2e] rounded-xl p-4 md:col-span-2">
           <div className="flex items-center mb-4 text-white/80">
             <ImageIcon className="w-5 h-5 mr-2" />
             <h2 className="font-medium">Desktop Wallpaper</h2>
@@ -159,7 +159,7 @@ export function SettingsApp({ onBack }: { onBack: () => void }) {
               <span className="text-sm text-white/50">Custom Image</span>
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="text-sm text-[#0a84ff] hover:text-blue-400 font-medium px-3 py-1.5 bg-[#0a84ff]/10 rounded-lg transition-colors"
+                className="text-sm text-primary hover:opacity-80 font-medium px-3 py-1.5 bg-primary/10 rounded-lg transition-colors"
               >
                 Upload
               </button>
@@ -184,7 +184,7 @@ export function SettingsApp({ onBack }: { onBack: () => void }) {
                     localStorage.removeItem('wallpaperId');
                     setWallpaperUrl(url);
                   }}
-                  className={`flex-shrink-0 w-16 h-16 rounded-lg bg-cover bg-center border-2 transition-all ${wallpaperUrl === url ? 'border-[#0a84ff] scale-105' : 'border-transparent hover:border-white/20'}`}
+                  className={`flex-shrink-0 w-16 h-16 rounded-lg bg-cover bg-center border-2 transition-all ${wallpaperUrl === url ? 'border-primary scale-105' : 'border-transparent hover:border-white/20'}`}
                   style={{ backgroundImage: `url(${url})` }}
                 />
               ))}

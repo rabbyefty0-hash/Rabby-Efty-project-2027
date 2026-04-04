@@ -162,7 +162,7 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto relative z-10 custom-scrollbar h-full w-full">
-        <div className="max-w-md mx-auto relative px-6">
+        <div className="max-w-5xl mx-auto relative px-6">
           {/* Sticky Search Bar */}
           <div className="sticky top-0 z-40 pt-14 pb-4 bg-zinc-950/80 backdrop-blur-xl -mx-6 px-6 mb-6">
             <div className="relative z-10">
@@ -179,16 +179,16 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
           </div>
 
           {searchQuery ? (
-            <div className="grid grid-cols-4 gap-x-2 sm:gap-x-4 gap-y-6 content-start px-1 sm:px-2 pb-8">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2 sm:gap-x-4 gap-y-6 content-start px-1 sm:px-2 pb-8">
               {filteredApps.map((app, idx) => renderAppIcon(app, idx, 'normal'))}
               {filteredApps.length === 0 && (
-                <div className="col-span-4 text-center py-12 text-white/50">
+                <div className="col-span-full text-center py-12 text-white/50">
                   No apps found matching "{searchQuery}"
                 </div>
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 pb-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-8">
               {CATEGORIES.map((category, catIdx) => {
                 const categoryApps = category.apps.map(id => APPS.find(a => a.id === id)).filter(Boolean);
                 if (categoryApps.length === 0) return null;
@@ -258,7 +258,7 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-6 pb-24 custom-scrollbar">
-              <div className="grid grid-cols-4 gap-x-2 sm:gap-x-4 gap-y-6 content-start">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-x-2 sm:gap-x-4 gap-y-6 content-start">
                 {CATEGORIES.find(c => c.name === expandedCategory)?.apps
                   .map(id => APPS.find(a => a.id === id))
                   .filter(Boolean)

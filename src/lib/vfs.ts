@@ -88,6 +88,7 @@ export const getNode = async (id: string): Promise<VFSNode | undefined> => {
 export const addNode = async (node: VFSNode): Promise<void> => {
   const db = await initVFS();
   await db.put('nodes', node);
+  window.dispatchEvent(new Event('vfs-updated'));
 };
 
 export const deleteNode = async (id: string): Promise<void> => {
@@ -101,6 +102,7 @@ export const deleteNode = async (id: string): Promise<void> => {
     }
   }
   await db.delete('nodes', id);
+  window.dispatchEvent(new Event('vfs-updated'));
 };
 
 export const renameNode = async (id: string, newName: string): Promise<void> => {
@@ -110,6 +112,7 @@ export const renameNode = async (id: string, newName: string): Promise<void> => 
     node.name = newName;
     node.modifiedAt = Date.now();
     await db.put('nodes', node);
+    window.dispatchEvent(new Event('vfs-updated'));
   }
 };
 

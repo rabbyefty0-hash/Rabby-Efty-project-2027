@@ -25,6 +25,10 @@ export default function CameraApp({ onClose }: CameraAppProps) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Image Analysis State
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     if (isChatOpen) {
@@ -95,6 +99,46 @@ export default function CameraApp({ onClose }: CameraAppProps) {
       setMessages(prev => [...prev, { role: 'model', text: "Sorry, I encountered an error. Please check your API key and try again." }]);
     } finally {
       setIsTyping(false);
+    }
+  };
+
+  const handleAnalyzeImage = async () => {
+    if (!capturedImage) return;
+    
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+
+    try {
+      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("API key is missing.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const base64 = capturedImage.split(',')[1];
+      const parts: any[] = [
+        { text: "Analyze this image and describe what you see in detail. If there is text, extract it. If there are objects, identify them." },
+        {
+          inlineData: {
+            data: base64,
+            mimeType: 'image/jpeg'
+          }
+        }
+      ];
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-flash-preview',
+        contents: { parts }
+      });
+
+      if (response.text) {
+        setAnalysisResult(response.text);
+      }
+    } catch (error) {
+      console.error("Analysis error:", error);
+      setAnalysisResult("Sorry, I encountered an error while analyzing the image. Please check your API key and try again.");
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -194,35 +238,81 @@ export default function CameraApp({ onClose }: CameraAppProps) {
 
   if (capturedImage) {
     return (
-      <div className="flex flex-col h-full bg-black relative">
-        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/50 to-transparent">
-          <button onClick={() => setCapturedImage(null)} className="p-2 rounded-full bg-black/50 text-white">
+      <div className="flex flex-col h-full bg-black relative overflow-y-auto custom-scrollbar">
+        <div className="p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/50 to-transparent sticky top-0">
+          <button onClick={() => {
+            setCapturedImage(null);
+            setAnalysisResult(null);
+          }} className="p-2 rounded-full bg-black/50 text-white">
             <X className="w-6 h-6" />
           </button>
           <div className="flex gap-2">
             <button 
-              onClick={() => {
-                setIsChatOpen(true);
-                if (messages.length === 0) {
-                  handleSendMessage("Analyze this image and provide context-aware help, suggestions, or identify what it is.");
-                }
-              }} 
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white backdrop-blur-md font-medium text-sm shadow-lg"
+              onClick={handleAnalyzeImage}
+              disabled={isAnalyzing}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white backdrop-blur-md font-medium text-sm shadow-lg disabled:opacity-50"
             >
-              <Sparkles className="w-4 h-4" />
-              Analyze
+              {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {isAnalyzing ? 'Analyzing...' : 'Analyze'}
             </button>
-            <button onClick={() => {
-              const a = document.createElement('a');
-              a.href = capturedImage;
-              a.download = `photo-${Date.now()}.jpg`;
-              a.click();
+            <button onClick={async () => {
+              try {
+                const { addNode, generateId } = await import('../lib/vfs');
+                const response = await fetch(capturedImage!);
+                const blob = await response.blob();
+                await addNode({
+                  id: generateId(),
+                  name: `photo-${Date.now()}.jpg`,
+                  type: 'file',
+                  parentId: 'root',
+                  data: blob,
+                  mimeType: 'image/jpeg',
+                  size: blob.size,
+                  createdAt: Date.now(),
+                  modifiedAt: Date.now()
+                });
+                alert('Saved to Gallery!');
+              } catch (error) {
+                console.error('Failed to save to gallery:', error);
+                alert('Failed to save to gallery.');
+              }
             }} className="px-4 py-2 bg-white text-black rounded-full font-medium text-sm">
-              Save
+              Save to Gallery
             </button>
           </div>
         </div>
-        <img src={capturedImage} alt="Captured" className="w-full h-full object-contain" />
+        
+        <div className="flex-1 flex flex-col">
+          <img src={capturedImage} alt="Captured" className="w-full max-h-[60vh] object-contain bg-black" />
+          
+          {/* Analysis Result Section */}
+          <AnimatePresence>
+            {(isAnalyzing || analysisResult) && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="p-6 bg-zinc-900 min-h-[40vh] rounded-t-3xl mt-[-20px] z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-blue-400" />
+                  <h3 className="text-white font-medium text-lg">AI Analysis</h3>
+                </div>
+                
+                {isAnalyzing ? (
+                  <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    <p className="text-white/60 text-sm">Analyzing image details...</p>
+                  </div>
+                ) : analysisResult ? (
+                  <div className="prose prose-invert prose-sm max-w-none text-white/90">
+                    <Markdown>{analysisResult}</Markdown>
+                  </div>
+                ) : null}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         {/* Chat Overlay for Captured Image */}
         <AnimatePresence>

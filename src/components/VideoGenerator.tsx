@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 declare global {
   interface Window {
-    aistudio: {
+    aistudio?: {
       hasSelectedApiKey: () => Promise<boolean>;
       openSelectKey: () => Promise<void>;
     };
@@ -190,7 +190,7 @@ export function VideoGenerator({ isVpnConnected }: VideoGeneratorProps) {
       }
 
       let operation = await ai.models.generateVideos({
-        model: 'veo-3.1-fast-generate-preview',
+        model: 'veo-3.1-lite-generate-preview',
         prompt: finalPrompt,
         config: {
           numberOfVideos: 1,
@@ -229,9 +229,21 @@ export function VideoGenerator({ isVpnConnected }: VideoGeneratorProps) {
     } catch (err: any) {
       console.error(err);
       const errorMessage = err?.message || '';
-      const errorString = typeof err === 'object' ? JSON.stringify(err) : String(err);
+      let displayError = errorMessage;
       
-      setError(errorMessage || errorString || 'Failed to process video');
+      if (errorMessage.includes('PERMISSION_DENIED') || errorMessage.includes('403')) {
+        displayError = 'Permission denied. Please ensure you have selected a valid paid API key for video generation.';
+        setHasKey(false); // Prompt them to select a key again
+      } else if (errorMessage.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(errorMessage);
+          if (parsed.error && parsed.error.message) {
+            displayError = parsed.error.message;
+          }
+        } catch (e) {}
+      }
+      
+      setError(displayError || (typeof err === 'object' ? JSON.stringify(err) : String(err)) || 'Failed to process video');
       setStatus('');
     } finally {
       setIsGenerating(false);

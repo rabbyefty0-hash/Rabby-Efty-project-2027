@@ -4,7 +4,7 @@ import { Apps } from './components/Apps';
 import { StatusBar } from './components/StatusBar';
 import { UploadedFile, ChatMessage } from './types';
 import { initChatSession, sendChatMessage, restoreChatHistory } from './services/gemini';
-import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube } from 'lucide-react';
+import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged, User } from './firebase';
 import { populateDummyData } from './lib/populate';
@@ -17,6 +17,8 @@ import { Calendar as CalendarApp } from './components/Calendar';
 import { Clock as ClockApp } from './components/Clock';
 import { MapsApp } from './components/Map';
 import { MusicApp } from './components/Music';
+
+import { LockScreen } from './components/LockScreen';
 
 const Chatbot = lazy(() => import('./components/Chatbot').then(m => ({ default: m.Chatbot })));
 const ImageGenerator = lazy(() => import('./components/ImageGenerator').then(m => ({ default: m.ImageGenerator })));
@@ -145,13 +147,6 @@ function AppContent() {
     const handleWallpaperChange = () => loadWallpaper();
     window.addEventListener('wallpaper-updated', handleWallpaperChange);
     return () => window.removeEventListener('wallpaper-updated', handleWallpaperChange);
-  }, []);
-
-  // Lock screen time
-  const [currentTime, setCurrentTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
   }, []);
 
   // Dynamic Island Auto-collapse
@@ -363,43 +358,11 @@ function AppContent() {
 
   if (isLocked) {
     return (
-      <div className="flex flex-col h-full w-full overflow-hidden font-sans relative bg-black text-white">
-        <div className="absolute inset-0 z-0">
-          <img src={wallpaperUrl} alt="Wallpaper" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/10 dark:bg-black/20" />
-        </div>
-        <div className="relative z-10 flex flex-col items-center pt-24 h-full">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-medium text-white/90 mb-1">{currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h2>
-            <h1 className="text-7xl font-light tracking-tighter">{currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</h1>
-          </div>
-          
-          <div className="mt-auto mb-12 flex flex-col items-center w-full px-8">
-            <div className="flex justify-between w-full mb-8 px-4">
-              <button className={`w-12 h-12 ${getIconShapeClass()} bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10`}>
-                <div className="w-5 h-5 rounded-full border-2 border-white/80" />
-              </button>
-              <button className={`w-12 h-12 ${getIconShapeClass()} bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10`}>
-                <ImageIcon className="w-5 h-5 text-white/80" />
-              </button>
-            </div>
-            
-            <motion.div 
-              drag="y"
-              dragConstraints={{ top: 0, bottom: 0 }}
-              onDragEnd={(e, info) => {
-                if (info.offset.y < -50) {
-                  setIsLocked(false);
-                }
-              }}
-              className="flex flex-col items-center cursor-grab active:cursor-grabbing"
-            >
-              <span className="text-sm font-medium text-white/80 mb-2 tracking-wide">Swipe up to unlock</span>
-              <div className="w-32 h-1.5 bg-white rounded-full" />
-            </motion.div>
-          </div>
-        </div>
-      </div>
+      <LockScreen 
+        wallpaperUrl={wallpaperUrl} 
+        iconShape={iconShape} 
+        onUnlock={() => setIsLocked(false)} 
+      />
     );
   }
 
@@ -643,18 +606,37 @@ function AppContent() {
                 className="w-full h-full flex items-center justify-between px-5"
               >
                 <div className="flex items-center space-x-4">
-                  <div className={`w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 ${getIconShapeClass()} flex items-center justify-center shadow-lg border border-white/20`}>
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
-                    <span className="text-sm font-bold text-white tracking-tight">System Active</span>
-                  </div>
+                  {(() => {
+                    const activeApp = APPS.find(app => app.id === activeTab);
+                    const AppIcon = activeApp?.icon || Sparkles;
+                    return (
+                      <>
+                        <div className={`w-12 h-12 ${activeApp ? activeApp.bg : 'bg-gradient-to-br from-indigo-500 to-purple-600'} ${getIconShapeClass()} flex items-center justify-center shadow-lg border border-white/20`}>
+                          <AppIcon className={`w-6 h-6 ${activeApp ? activeApp.color : 'text-white'}`} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
+                          <span className="text-sm font-bold text-white tracking-tight">{activeApp ? activeApp.name : 'System Active'}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="flex flex-col items-end space-y-1">
-                  <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                    <span className="text-[9px] font-black text-green-400 tracking-widest uppercase">Secure</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                      <span className="text-[9px] font-black text-green-400 tracking-widest uppercase">Secure</span>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDynamicIslandExpanded(false);
+                      }}
+                      className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                   <span className="text-[9px] text-white/30 font-medium tracking-tighter">v17.0.1 PRO</span>
                 </div>
@@ -783,7 +765,7 @@ function AppContent() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="max-w-[320px] w-full mx-auto glass-dock liquid-glass p-3.5 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl mb-4"
+              className="max-w-[320px] sm:max-w-md w-full mx-auto glass-dock liquid-glass p-3.5 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl mb-4"
             >
               <button 
                 onClick={() => handleNavigate('home')}
