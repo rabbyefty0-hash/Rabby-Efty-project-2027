@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ChevronLeft, Play, Youtube, AlertCircle, Loader2 } from 'lucide-react';
+import { Search, ChevronLeft, Play, Youtube, AlertCircle, Loader2, X } from 'lucide-react';
 
 interface YouTubeAppProps {
   onBack: () => void;
@@ -105,8 +105,20 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
             placeholder="Search YouTube" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#272727] text-white rounded-full py-2 pl-4 pr-12 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full bg-[#272727] text-white rounded-full py-2 pl-4 pr-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                searchVideos('technology'); // Reset to default
+              }}
+              className="absolute right-14 top-0 bottom-0 px-2 flex items-center justify-center text-gray-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
           <button 
             type="submit"
             className="absolute right-0 top-0 bottom-0 px-4 bg-[#222222] rounded-r-full border-l border-[#303030] hover:bg-[#303030] transition-colors flex items-center justify-center"

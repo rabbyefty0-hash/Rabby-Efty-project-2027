@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldCheck, Globe, Power, Activity, MapPin, Star, X, Check, Clock, ArrowDown, ArrowUp, HardDrive } from 'lucide-react';
+import { Shield, ShieldCheck, Globe, Power, Activity, MapPin, Star, X, Check, Clock, ArrowDown, ArrowUp, HardDrive, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const SERVERS = [
@@ -46,6 +46,7 @@ export function Vpn({ isConnected, setIsConnected }: VpnProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedServer, setSelectedServer] = useState(SERVERS[0]);
   const [showServers, setShowServers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Connection details state
   const [connectionStartTime, setConnectionStartTime] = useState<number | null>(null);
@@ -123,7 +124,12 @@ export function Vpn({ isConnected, setIsConnected }: VpnProps) {
       setSelectedServer(server);
     }
     setShowServers(false);
+    setSearchQuery('');
   };
+
+  const filteredServers = SERVERS.filter(server => 
+    server.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10 flex flex-col items-center justify-center h-full text-white">
@@ -274,34 +280,52 @@ export function Vpn({ isConnected, setIsConnected }: VpnProps) {
                   <X className="w-5 h-5" />
                 </button>
               </div>
+              <div className="p-3 border-b border-white/10">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/50" />
+                  <input
+                    type="text"
+                    placeholder="Search servers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-black/20 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  />
+                </div>
+              </div>
               <div className="overflow-y-auto p-2">
-                {SERVERS.map((server) => (
-                  <button
-                    key={server.id}
-                    onClick={() => handleSelectServer(server)}
-                    className={`w-full flex items-center justify-between p-4 rounded-2xl transition-colors ${
-                      selectedServer.id === server.id ? 'bg-indigo-500/20 border border-indigo-500/30' : 'hover:bg-white/5 border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{server.flag}</span>
-                      <div className="text-left">
-                        <p className="font-medium text-white/90">{server.name}</p>
-                        {server.premium ? (
-                          <p className="text-xs text-amber-400 flex items-center space-x-1 mt-0.5">
-                            <Star className="w-3 h-3 fill-amber-400" />
-                            <span>Premium (Free Access)</span>
-                          </p>
-                        ) : (
-                          <p className="text-xs text-white/50 mt-0.5">Standard Server</p>
-                        )}
+                {filteredServers.length > 0 ? (
+                  filteredServers.map((server) => (
+                    <button
+                      key={server.id}
+                      onClick={() => handleSelectServer(server)}
+                      className={`w-full flex items-center justify-between p-4 rounded-2xl transition-colors ${
+                        selectedServer.id === server.id ? 'bg-indigo-500/20 border border-indigo-500/30' : 'hover:bg-white/5 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{server.flag}</span>
+                        <div className="text-left">
+                          <p className="font-medium text-white/90">{server.name}</p>
+                          {server.premium ? (
+                            <p className="text-xs text-amber-400 flex items-center space-x-1 mt-0.5">
+                              <Star className="w-3 h-3 fill-amber-400" />
+                              <span>Premium (Free Access)</span>
+                            </p>
+                          ) : (
+                            <p className="text-xs text-white/50 mt-0.5">Standard Server</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    {selectedServer.id === server.id && (
-                      <Check className="w-5 h-5 text-indigo-400" />
-                    )}
-                  </button>
-                ))}
+                      {selectedServer.id === server.id && (
+                        <Check className="w-5 h-5 text-indigo-400" />
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-white/50 text-sm">
+                    No servers found matching "{searchQuery}"
+                  </div>
+                )}
               </div>
             </motion.div>
           </>
