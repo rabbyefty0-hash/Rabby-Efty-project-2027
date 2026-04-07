@@ -180,6 +180,14 @@ export default function ContactsApp({ onBack }: ContactsAppProps) {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: 20 }}
         className="flex flex-col h-full bg-[#f2f2f7] dark:bg-black text-black dark:text-white"
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.2}
+        onDragEnd={(e, info) => {
+          if (info.offset.x > 50 || info.velocity.x > 500) {
+            setView('list');
+          }
+        }}
       >
         <div className="pt-12 pb-4 px-4 flex justify-between items-center">
           <button onClick={() => setView('list')} className="text-blue-500 flex items-center text-lg">

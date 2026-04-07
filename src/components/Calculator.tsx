@@ -72,7 +72,17 @@ export function Calculator({ onBack }: CalculatorProps) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-black text-white">
+    <div 
+      className="flex flex-col h-full bg-black text-white"
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(e, info) => {
+        if (info.offset.x > 50 || info.velocity.x > 500) {
+          onBack();
+        }
+      }}
+    >
       <div className="flex items-center p-4 pt-12 bg-zinc-900">
         <button onClick={onBack} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors">
           <ChevronLeft className="w-6 h-6" />

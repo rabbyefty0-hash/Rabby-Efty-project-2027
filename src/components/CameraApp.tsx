@@ -16,6 +16,7 @@ export default function CameraApp({ onClose }: CameraAppProps) {
   const [mode, setMode] = useState<'photo' | 'video'>('photo');
   const [isRecording, setIsRecording] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
 
@@ -25,10 +26,6 @@ export default function CameraApp({ onClose }: CameraAppProps) {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Image Analysis State
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     if (isChatOpen) {
@@ -102,50 +99,11 @@ export default function CameraApp({ onClose }: CameraAppProps) {
     }
   };
 
-  const handleAnalyzeImage = async () => {
-    if (!capturedImage) return;
-    
-    setIsAnalyzing(true);
-    setAnalysisResult(null);
-
-    try {
-      const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("API key is missing.");
-      }
-      const ai = new GoogleGenAI({ apiKey });
-      
-      const base64 = capturedImage.split(',')[1];
-      const parts: any[] = [
-        { text: "Analyze this image and describe what you see in detail. If there is text, extract it. If there are objects, identify them." },
-        {
-          inlineData: {
-            data: base64,
-            mimeType: 'image/jpeg'
-          }
-        }
-      ];
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-preview',
-        contents: { parts }
-      });
-
-      if (response.text) {
-        setAnalysisResult(response.text);
-      }
-    } catch (error) {
-      console.error("Analysis error:", error);
-      setAnalysisResult("Sorry, I encountered an error while analyzing the image. Please check your API key and try again.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
   const startCamera = async () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
     }
+    setError(null);
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode },
@@ -155,8 +113,17 @@ export default function CameraApp({ onClose }: CameraAppProps) {
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error accessing camera:", err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError("Permission denied. Please allow camera and microphone access in your browser settings.");
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setError("No camera found on this device.");
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setError("Camera is already in use by another application.");
+      } else {
+        setError(`Could not access camera: ${err.message || err.name || 'Unknown error'}`);
+      }
     }
   };
 
@@ -238,81 +205,35 @@ export default function CameraApp({ onClose }: CameraAppProps) {
 
   if (capturedImage) {
     return (
-      <div className="flex flex-col h-full bg-black relative overflow-y-auto custom-scrollbar">
-        <div className="p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/50 to-transparent sticky top-0">
-          <button onClick={() => {
-            setCapturedImage(null);
-            setAnalysisResult(null);
-          }} className="p-2 rounded-full bg-black/50 text-white">
+      <div className="flex flex-col h-full bg-black relative">
+        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10 bg-gradient-to-b from-black/50 to-transparent">
+          <button onClick={() => setCapturedImage(null)} className="p-2 rounded-full bg-black/50 text-white">
             <X className="w-6 h-6" />
           </button>
           <div className="flex gap-2">
             <button 
-              onClick={handleAnalyzeImage}
-              disabled={isAnalyzing}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white backdrop-blur-md font-medium text-sm shadow-lg disabled:opacity-50"
+              onClick={() => {
+                setIsChatOpen(true);
+                if (messages.length === 0) {
+                  handleSendMessage("Analyze this image and provide context-aware help, suggestions, or identify what it is.");
+                }
+              }} 
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white backdrop-blur-md font-medium text-sm shadow-lg"
             >
-              {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+              <Sparkles className="w-4 h-4" />
+              Analyze
             </button>
-            <button onClick={async () => {
-              try {
-                const { addNode, generateId } = await import('../lib/vfs');
-                const response = await fetch(capturedImage!);
-                const blob = await response.blob();
-                await addNode({
-                  id: generateId(),
-                  name: `photo-${Date.now()}.jpg`,
-                  type: 'file',
-                  parentId: 'root',
-                  data: blob,
-                  mimeType: 'image/jpeg',
-                  size: blob.size,
-                  createdAt: Date.now(),
-                  modifiedAt: Date.now()
-                });
-                alert('Saved to Gallery!');
-              } catch (error) {
-                console.error('Failed to save to gallery:', error);
-                alert('Failed to save to gallery.');
-              }
+            <button onClick={() => {
+              const a = document.createElement('a');
+              a.href = capturedImage;
+              a.download = `photo-${Date.now()}.jpg`;
+              a.click();
             }} className="px-4 py-2 bg-white text-black rounded-full font-medium text-sm">
-              Save to Gallery
+              Save
             </button>
           </div>
         </div>
-        
-        <div className="flex-1 flex flex-col">
-          <img src={capturedImage} alt="Captured" className="w-full max-h-[60vh] object-contain bg-black" />
-          
-          {/* Analysis Result Section */}
-          <AnimatePresence>
-            {(isAnalyzing || analysisResult) && (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="p-6 bg-zinc-900 min-h-[40vh] rounded-t-3xl mt-[-20px] z-10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="w-5 h-5 text-blue-400" />
-                  <h3 className="text-white font-medium text-lg">AI Analysis</h3>
-                </div>
-                
-                {isAnalyzing ? (
-                  <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                    <p className="text-white/60 text-sm">Analyzing image details...</p>
-                  </div>
-                ) : analysisResult ? (
-                  <div className="prose prose-invert prose-sm max-w-none text-white/90">
-                    <Markdown>{analysisResult}</Markdown>
-                  </div>
-                ) : null}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <img src={capturedImage} alt="Captured" className="w-full h-full object-contain" />
 
         {/* Chat Overlay for Captured Image */}
         <AnimatePresence>
@@ -323,6 +244,14 @@ export default function CameraApp({ onClose }: CameraAppProps) {
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="absolute inset-0 z-20 bg-black/60 backdrop-blur-md flex flex-col"
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.1 }}
+              onDragEnd={(e, info) => {
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  setIsChatOpen(false);
+                }
+              }}
             >
               <div className="p-4 pt-12 flex justify-between items-center bg-black/40 border-b border-white/10">
                 <h3 className="text-white font-medium flex items-center gap-2">
@@ -429,13 +358,28 @@ export default function CameraApp({ onClose }: CameraAppProps) {
 
       {/* Viewfinder */}
       <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-        />
+        {error ? (
+          <div className="p-6 text-center">
+            <div className="bg-red-500/20 border border-red-500/30 text-red-200 p-4 rounded-2xl backdrop-blur-md">
+              <p className="font-medium mb-2">Camera Error</p>
+              <p className="text-sm opacity-80">{error}</p>
+              <button 
+                onClick={startCamera}
+                className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm font-medium transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+          />
+        )}
         {isRecording && (
           <div className="absolute top-6 right-6 flex items-center space-x-2 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/50 backdrop-blur-md">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -476,6 +420,14 @@ export default function CameraApp({ onClose }: CameraAppProps) {
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="absolute inset-0 z-20 bg-black/60 backdrop-blur-md flex flex-col"
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.1 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                setIsChatOpen(false);
+              }
+            }}
           >
             <div className="p-4 pt-12 flex justify-between items-center bg-black/40 border-b border-white/10">
               <h3 className="text-white font-medium flex items-center gap-2">

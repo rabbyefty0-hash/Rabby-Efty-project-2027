@@ -47,7 +47,23 @@ export function SettingsApp({ onBack }: { onBack: () => void }) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[#1c1c1e] text-white overflow-y-auto custom-scrollbar">
+    <div 
+      className="flex flex-col h-full bg-[#1c1c1e] text-white overflow-y-auto custom-scrollbar"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       <div className="sticky top-0 z-10 bg-[#1c1c1e]/80 backdrop-blur-xl border-b border-white/10 px-4 py-3 pt-10 flex items-center">
         <button onClick={onBack} className="text-primary flex items-center font-medium">
           <ArrowLeft className="w-5 h-5 mr-1" />

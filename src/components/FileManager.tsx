@@ -799,6 +799,14 @@ export function FileManager() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             className="absolute inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col"
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.2 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                closePreview();
+              }
+            }}
           >
             <div className="flex justify-between items-center p-4 pt-12 text-white">
               <button onClick={closePreview} className="text-blue-400 font-medium">Done</button>

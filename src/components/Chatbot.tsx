@@ -202,6 +202,11 @@ export function Chatbot({ messages, onSendMessage, onClearChat, onStopGeneration
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             className="absolute bottom-40 right-4 w-[calc(100vw-2rem)] sm:w-96 h-[600px] max-h-[calc(100vh-20rem)] z-[90] flex flex-col shadow-2xl rounded-[2.5rem] overflow-hidden glass-panel border border-white/10 liquid-glass cursor-move"
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 500) {
+                setIsOpen(false);
+              }
+            }}
           >
             <div className="flex items-center justify-between p-5 bg-black/40 backdrop-blur-xl border-b border-white/10 cursor-move">
               <div className="flex items-center space-x-3">

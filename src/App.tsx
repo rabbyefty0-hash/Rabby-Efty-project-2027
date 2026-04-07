@@ -4,7 +4,7 @@ import { Apps } from './components/Apps';
 import { StatusBar } from './components/StatusBar';
 import { UploadedFile, ChatMessage } from './types';
 import { initChatSession, sendChatMessage, restoreChatHistory } from './services/gemini';
-import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube, X } from 'lucide-react';
+import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged, User } from './firebase';
 import { populateDummyData } from './lib/populate';
@@ -313,40 +313,6 @@ function AppContent() {
       setActiveTab(nextTab);
     }
   };
-
-  const [touchStart, setTouchStart] = useState<{x: number, y: number} | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
-    if ('touches' in e) {
-      setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-    } else {
-      setTouchStart({ x: e.clientX, y: e.clientY });
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent | React.MouseEvent) => {
-    if (!touchStart) return;
-    let endX, endY;
-    if ('changedTouches' in e) {
-      endX = e.changedTouches[0].clientX;
-      endY = e.changedTouches[0].clientY;
-    } else {
-      endX = e.clientX;
-      endY = e.clientY;
-    }
-    
-    const dx = endX - touchStart.x;
-    const dy = endY - touchStart.y;
-
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
-      if (dx > 0 && touchStart.x < 50) {
-        handleBack();
-      } else if (dx < 0 && touchStart.x > window.innerWidth - 50) {
-        handleForward();
-      }
-    }
-    setTouchStart(null);
-  };
   
   const getIconShapeClass = () => {
     switch (iconShape) {
@@ -367,12 +333,37 @@ function AppContent() {
   }
 
   return (
-    <div 
+    <motion.div 
       className={`flex flex-col h-full w-full overflow-hidden font-sans relative bg-transparent transition-all duration-700 ${theme === 'light' ? 'light text-zinc-900' : 'text-white'} ${isVpnConnected ? 'shadow-[inset_0_0_100px_rgba(34,197,94,0.15)]' : ''}`}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={handleTouchStart}
-      onMouseUp={handleTouchEnd}
+      onPanEnd={(e, info) => {
+        const { offset, velocity, point } = info;
+        const swipeThreshold = 50;
+        const velocityThreshold = 500;
+        const startX = point.x - offset.x;
+        
+        // Get container bounds
+        const container = (e.target as HTMLElement).closest('.sm\\:max-w-\\[440px\\]');
+        const containerRect = container ? container.getBoundingClientRect() : { left: 0, right: window.innerWidth };
+        const relativeStartX = startX - containerRect.left;
+        const containerWidth = containerRect.right - containerRect.left;
+
+        // Check if it's mostly a horizontal swipe
+        if (Math.abs(offset.x) > Math.abs(offset.y)) {
+          if (offset.x > swipeThreshold || velocity.x > velocityThreshold) {
+            // Swipe right (Back)
+            // Only trigger if starting near the left edge
+            if (relativeStartX < 50) {
+              handleBack();
+            }
+          } else if (offset.x < -swipeThreshold || velocity.x < -velocityThreshold) {
+            // Swipe left (Forward)
+            // Only trigger if starting near the right edge
+            if (relativeStartX > containerWidth - 50) {
+              handleForward();
+            }
+          }
+        }
+      }}
     >
       {/* Wallpaper Background */}
       <div className="absolute inset-0 z-[-1] pointer-events-none">
@@ -421,6 +412,14 @@ function AppContent() {
             className="absolute inset-0 z-[120] bg-black/40 backdrop-blur-3xl p-6 pt-16 flex flex-col"
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowControlCenter(false);
+            }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.1, bottom: 0 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y < -50 || info.velocity.y < -500) {
+                setShowControlCenter(false);
+              }
             }}
           >
             <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto w-full">
@@ -520,6 +519,14 @@ function AppContent() {
             onClick={(e) => {
               if (e.target === e.currentTarget) setShowSiri(false);
             }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.1 }}
+            onDragEnd={(e, info) => {
+              if (info.offset.y > 50 || info.velocity.y > 500) {
+                setShowSiri(false);
+              }
+            }}
           >
             <div className="text-center mb-12 px-8">
               <h2 className="text-2xl font-medium text-white/90 mb-2">How can I help?</h2>
@@ -606,37 +613,18 @@ function AppContent() {
                 className="w-full h-full flex items-center justify-between px-5"
               >
                 <div className="flex items-center space-x-4">
-                  {(() => {
-                    const activeApp = APPS.find(app => app.id === activeTab);
-                    const AppIcon = activeApp?.icon || Sparkles;
-                    return (
-                      <>
-                        <div className={`w-12 h-12 ${activeApp ? activeApp.bg : 'bg-gradient-to-br from-indigo-500 to-purple-600'} ${getIconShapeClass()} flex items-center justify-center shadow-lg border border-white/20`}>
-                          <AppIcon className={`w-6 h-6 ${activeApp ? activeApp.color : 'text-white'}`} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
-                          <span className="text-sm font-bold text-white tracking-tight">{activeApp ? activeApp.name : 'System Active'}</span>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  <div className={`w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 ${getIconShapeClass()} flex items-center justify-center shadow-lg border border-white/20`}>
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
+                    <span className="text-sm font-bold text-white tracking-tight">System Active</span>
+                  </div>
                 </div>
                 <div className="flex flex-col items-end space-y-1">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                      <span className="text-[9px] font-black text-green-400 tracking-widest uppercase">Secure</span>
-                    </div>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsDynamicIslandExpanded(false);
-                      }}
-                      className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                  <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                    <span className="text-[9px] font-black text-green-400 tracking-widest uppercase">Secure</span>
                   </div>
                   <span className="text-[9px] text-white/30 font-medium tracking-tighter">v17.0.1 PRO</span>
                 </div>
@@ -825,7 +813,7 @@ function AppContent() {
           className={`w-36 h-1.5 rounded-full pointer-events-auto cursor-pointer hover:scale-110 transition-transform ${theme === 'light' ? 'bg-zinc-800/30 hover:bg-zinc-800/50' : 'bg-white/40 hover:bg-white/60'}`} 
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
 

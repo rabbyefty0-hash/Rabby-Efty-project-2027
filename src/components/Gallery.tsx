@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Share, Trash2, Heart, Play, Sparkles, Image as ImageIcon, Download } from 'lucide-react';
+import { ChevronLeft, Share, Trash2, Heart, Play, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { VFSNode, getAllFiles, getNode, deleteNode } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
 import { GoogleGenAI } from '@google/genai';
@@ -136,17 +136,6 @@ export function Gallery() {
     }
   };
 
-  const handleDownload = () => {
-    if (previewUrl && previewNode) {
-      const a = document.createElement('a');
-      a.href = previewUrl;
-      a.download = previewNode.name || 'download';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  };
-
   // Group by date (simplified to just a flat grid for now, but we can add headers)
   return (
     <div className="h-full bg-white dark:bg-black text-black dark:text-white flex flex-col relative overflow-hidden font-sans">
@@ -192,11 +181,13 @@ export function Gallery() {
             {/* Media Content */}
             <motion.div 
               className="flex-1 flex items-center justify-center overflow-hidden bg-black relative"
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
+              drag
+              dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
               dragElastic={0.2}
               onDragEnd={(e, info) => {
-                if (info.offset.x > 50) {
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  closePreview();
+                } else if (info.offset.x > 50) {
                   handlePrevious();
                 } else if (info.offset.x < -50) {
                   handleNext();
@@ -258,9 +249,9 @@ export function Gallery() {
                   <span className="text-[10px] font-medium opacity-80">Wallpaper</span>
                 </button>
               )}
-              <button onClick={handleDownload} className="text-white flex flex-col items-center gap-1 hover:scale-110 active:scale-95 transition-all">
-                <Download className="w-6 h-6" />
-                <span className="text-[10px] font-medium opacity-80">Download</span>
+              <button className="text-white flex flex-col items-center gap-1 hover:scale-110 active:scale-95 transition-all">
+                <Heart className="w-6 h-6" />
+                <span className="text-[10px] font-medium opacity-80">Favorite</span>
               </button>
               <button onClick={handleDelete} className="text-red-400 flex flex-col items-center gap-1 hover:scale-110 active:scale-95 transition-all">
                 <Trash2 className="w-6 h-6" />
