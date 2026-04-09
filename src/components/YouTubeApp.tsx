@@ -119,6 +119,14 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       className="flex flex-col h-full bg-[#0f0f0f] text-white"
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(e, info) => {
+        if (info.offset.x > 50 || info.velocity.x > 500) {
+          onBack();
+        }
+      }}
     >
       <div className="pt-12 pb-4 px-4 flex items-center justify-between bg-[#0f0f0f] z-10 sticky top-0">
         <div className="flex items-center gap-2">

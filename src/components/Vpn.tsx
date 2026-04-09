@@ -40,9 +40,10 @@ const SERVERS = [
 interface VpnProps {
   isConnected: boolean;
   setIsConnected: (connected: boolean) => void;
+  onBack?: () => void;
 }
 
-export function Vpn({ isConnected, setIsConnected }: VpnProps) {
+export function Vpn({ isConnected, setIsConnected, onBack }: VpnProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedServer, setSelectedServer] = useState(SERVERS[0]);
   const [showServers, setShowServers] = useState(false);
@@ -132,7 +133,23 @@ export function Vpn({ isConnected, setIsConnected }: VpnProps) {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10 flex flex-col items-center justify-center h-full text-white">
+    <div 
+      className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10 flex flex-col items-center justify-center h-full text-white"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       <div className="w-full max-w-md space-y-12 text-center">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">꧁Rᴀʙʙʏ Eғᴛʏ꧂ VPN</h1>

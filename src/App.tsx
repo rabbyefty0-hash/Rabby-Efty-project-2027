@@ -689,21 +689,21 @@ function AppContent() {
             >
               <div className="flex-1 overflow-y-auto relative">
                 <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-white/50" /></div>}>
-                  {activeTab === 'image' && <ImageGenerator isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'video' && <VideoGenerator isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'voice' && <VoiceChat isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'vpn' && <Vpn isConnected={isVpnConnected} setIsConnected={setIsVpnConnected} />}
-                  {activeTab === 'browser' && <Browser isVpnConnected={isVpnConnected} setIsVpnConnected={setIsVpnConnected} />}
-                  {activeTab === 'downloader' && <VideoDownloader isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'fb-autolike' && <FbAutoLike isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'build-apk' && <BuildApk isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'arena-ai' && <ArenaAi isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'card-gen' && <CardGenerator isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'temp-mail' && <TempMail isVpnConnected={isVpnConnected} />}
-                  {activeTab === 'temp-number' && <TempNumber isVpnConnected={isVpnConnected} />}
+                  {activeTab === 'image' && <ImageGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'video' && <VideoGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'voice' && <VoiceChat isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'vpn' && <Vpn isConnected={isVpnConnected} setIsConnected={setIsVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'browser' && <Browser isVpnConnected={isVpnConnected} setIsVpnConnected={setIsVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'downloader' && <VideoDownloader isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'fb-autolike' && <FbAutoLike isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'build-apk' && <BuildApk isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'arena-ai' && <ArenaAi isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'card-gen' && <CardGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'temp-mail' && <TempMail isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'temp-number' && <TempNumber isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'whatsapp' && <WhatsApp onBack={handleBack} />}
-                  {activeTab === 'file-manager' && <FileManager />}
-                  {activeTab === 'gallery' && <Gallery />}
+                  {activeTab === 'file-manager' && <FileManager onBack={handleBack} />}
+                  {activeTab === 'gallery' && <Gallery onBack={handleBack} />}
                   {activeTab === 'settings' && <SettingsApp onBack={handleBack} />}
                   {activeTab === 'followeran' && <Followeran onBack={handleBack} />}
                   {activeTab === 'calculator' && <CalculatorApp onBack={handleBack} />}
@@ -724,6 +724,7 @@ function AppContent() {
                     isAuthLoading={isAuthLoading}
                     handleSignIn={handleSignIn}
                     handleLogout={handleLogout}
+                    onBack={handleBack}
                   />}
                 </Suspense>
               </div>

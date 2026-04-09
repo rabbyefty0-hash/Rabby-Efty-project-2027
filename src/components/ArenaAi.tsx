@@ -31,9 +31,10 @@ const IMAGE_STYLES = [
 
 interface ArenaAiProps {
   isVpnConnected?: boolean;
+  onBack?: () => void;
 }
 
-export function ArenaAi({ isVpnConnected }: ArenaAiProps) {
+export function ArenaAi({ isVpnConnected, onBack }: ArenaAiProps) {
   const [mode, setMode] = useState<'text' | 'image'>('text');
   const [prompt, setPrompt] = useState('');
   const [modelA, setModelA] = useState(MODELS[0].id);

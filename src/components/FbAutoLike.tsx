@@ -8,9 +8,10 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface FbAutoLikeProps {
   isVpnConnected?: boolean;
+  onBack?: () => void;
 }
 
-export function FbAutoLike({ isVpnConnected }: FbAutoLikeProps) {
+export function FbAutoLike({ isVpnConnected, onBack }: FbAutoLikeProps) {
   const [url, setUrl] = useState('');
   const [amount, setAmount] = useState('50');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -131,7 +132,23 @@ export function FbAutoLike({ isVpnConnected }: FbAutoLikeProps) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10 flex flex-col items-center">
+    <div 
+      className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10 flex flex-col items-center"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       <div className="w-full max-w-2xl space-y-8">
         <div className="text-center space-y-4">
           <div className="flex justify-center space-x-4 mb-2">

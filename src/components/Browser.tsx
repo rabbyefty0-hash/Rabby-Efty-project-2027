@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 interface BrowserProps {
   isVpnConnected: boolean;
   setIsVpnConnected: (connected: boolean) => void;
+  onBack?: () => void;
 }
 
 interface BrowserTab {
@@ -20,7 +21,7 @@ interface BrowserTab {
   loadError: boolean;
 }
 
-export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
+export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserProps) {
   const [homeUrl, setHomeUrl] = useState(() => {
     return localStorage.getItem('browser_home_url') || 'https://www.google.com/search?igu=1';
   });
@@ -262,7 +263,23 @@ export function Browser({ isVpnConnected, setIsVpnConnected }: BrowserProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-12 pb-24">
+    <div 
+      className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-12 pb-24"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       {/* Tab Bar */}
       <div className="bg-zinc-100/80 backdrop-blur-md flex items-center px-2 pt-2 pb-1 space-x-1 overflow-x-auto custom-scrollbar border-b border-zinc-200">
         {tabs.map(tab => (
