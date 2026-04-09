@@ -97,7 +97,17 @@ export function MapsApp({ onBack }: MapsProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-100 text-gray-900 relative">
+    <div 
+      className="flex flex-col h-full bg-gray-100 text-gray-900 relative"
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(e, info) => {
+        if (info.offset.x > 50 || info.velocity.x > 500) {
+          onBack();
+        }
+      }}
+    >
       <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/50 to-transparent pt-12 pb-6 px-4 flex items-center gap-3">
         <button 
           onClick={onBack} 

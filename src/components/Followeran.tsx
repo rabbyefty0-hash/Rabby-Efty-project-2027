@@ -144,7 +144,23 @@ export function Followeran({ onBack }: FolloweranProps) {
   const currentServiceDetails = services.find(s => s.service === selectedService);
 
   return (
-    <div className="h-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white flex flex-col font-sans overflow-hidden">
+    <div 
+      className="h-full bg-gray-50 dark:bg-zinc-900 text-black dark:text-white flex flex-col font-sans overflow-hidden"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       {/* Header */}
       <div className="pt-12 pb-4 px-4 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-white/10 flex-shrink-0 flex items-center justify-between z-10">
         <div className="flex items-center gap-2">

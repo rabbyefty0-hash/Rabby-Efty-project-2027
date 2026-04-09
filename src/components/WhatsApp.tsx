@@ -972,7 +972,23 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
       </AnimatePresence>
 
       {/* Sidebar (Contacts) */}
-      <div className={`w-full md:w-1/3 border-r border-white/10 flex flex-col bg-[#111b21] ${activeChat ? 'hidden md:flex' : 'flex'}`}>
+      <div 
+        className={`w-full md:w-1/3 border-r border-white/10 flex flex-col bg-[#111b21] ${activeChat ? 'hidden md:flex' : 'flex'}`}
+        style={{ touchAction: 'pan-y' }}
+      >
+        <div 
+          className="absolute inset-y-0 left-0 w-4 z-50"
+          onPointerDown={(e) => {
+            const startX = e.clientX;
+            const handlePointerUp = (upEvent: PointerEvent) => {
+              if (upEvent.clientX - startX > 50) {
+                if (onBack) onBack();
+              }
+              window.removeEventListener('pointerup', handlePointerUp);
+            };
+            window.addEventListener('pointerup', handlePointerUp);
+          }}
+        />
         {/* Header */}
         <div className="h-24 bg-[#202c33] flex items-center justify-between px-4 flex-shrink-0 pt-12">
           <div className="flex items-center gap-3">
@@ -1054,7 +1070,23 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
       </div>
 
       {/* Chat Area */}
-      <div className={`flex-1 flex flex-col bg-[#0b141a] relative ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
+      <div 
+        className={`flex-1 flex flex-col bg-[#0b141a] relative ${!activeChat ? 'hidden md:flex' : 'flex'}`}
+        style={{ touchAction: 'pan-y' }}
+      >
+        <div 
+          className="absolute inset-y-0 left-0 w-4 z-50 md:hidden"
+          onPointerDown={(e) => {
+            const startX = e.clientX;
+            const handlePointerUp = (upEvent: PointerEvent) => {
+              if (upEvent.clientX - startX > 50) {
+                setActiveChat(null);
+              }
+              window.removeEventListener('pointerup', handlePointerUp);
+            };
+            window.addEventListener('pointerup', handlePointerUp);
+          }}
+        />
         {/* Chat Background Pattern */}
         <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/gi_DcbOglki.png")' }}></div>
 

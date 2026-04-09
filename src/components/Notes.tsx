@@ -53,7 +53,21 @@ export function Notes({ onBack }: NotesProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-yellow-50 text-gray-900">
+    <div 
+      className="flex flex-col h-full bg-yellow-50 text-gray-900"
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.2}
+      onDragEnd={(e, info) => {
+        if (info.offset.x > 50 || info.velocity.x > 500) {
+          if (activeNote && !isEditing) {
+            setActiveNote(null);
+          } else {
+            onBack();
+          }
+        }
+      }}
+    >
       <div className="flex items-center justify-between p-4 pt-12 bg-yellow-400 text-yellow-900 shadow-sm z-10">
         <div className="flex items-center">
           <button onClick={() => activeNote && !isEditing ? setActiveNote(null) : onBack()} className="p-2 -ml-2 hover:bg-yellow-500/30 rounded-full transition-colors">
