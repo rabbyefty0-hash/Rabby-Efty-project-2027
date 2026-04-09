@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface TempNumberProps {
   isVpnConnected?: boolean;
+  onBack?: () => void;
 }
 
 interface SmsMessage {
@@ -18,7 +19,7 @@ interface PhoneNumber {
   country: string;
 }
 
-export function TempNumber({ isVpnConnected }: TempNumberProps) {
+export function TempNumber({ isVpnConnected, onBack }: TempNumberProps) {
   const [numbers, setNumbers] = useState<PhoneNumber[]>([]);
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [messages, setMessages] = useState<SmsMessage[]>([]);

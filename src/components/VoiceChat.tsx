@@ -181,7 +181,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
                 await audioCtxRef.current.resume();
               }
               const source = audioCtxRef.current.createMediaStreamSource(stream);
-              const processor = audioCtxRef.current.createScriptProcessor(4096, 1, 1);
+              const processor = audioCtxRef.current.createScriptProcessor(2048, 1, 1);
               
               const session = await sessionPromise;
               
@@ -268,12 +268,13 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
                 const source = playbackCtxRef.current.createBufferSource();
                 source.buffer = audioBuffer;
                 
-                // Connect to both the audio element destination (for mobile speaker routing) 
-                // and the default destination (for desktop)
+                // Connect to the audio element destination (for mobile speaker routing) 
+                // OR the default destination (for desktop)
                 if (mediaStreamDestinationRef.current) {
                   source.connect(mediaStreamDestinationRef.current);
+                } else {
+                  source.connect(playbackCtxRef.current.destination);
                 }
-                source.connect(playbackCtxRef.current.destination);
 
                 const currentTime = playbackCtxRef.current.currentTime;
                 if (nextPlayTimeRef.current < currentTime) {

@@ -14,9 +14,10 @@ declare global {
 
 interface VideoGeneratorProps {
   isVpnConnected?: boolean;
+  onBack?: () => void;
 }
 
-export function VideoGenerator({ isVpnConnected }: VideoGeneratorProps) {
+export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
@@ -257,7 +258,21 @@ export function VideoGenerator({ isVpnConnected }: VideoGeneratorProps) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleFileUpload}
+      style={{ touchAction: 'pan-y' }}
     >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       {/* Key Selection Banner */}
       {hasKey === false && (
         <div className="absolute top-[72px] left-4 right-4 z-50 bg-indigo-500/90 backdrop-blur-xl p-4 rounded-2xl flex items-center justify-between shadow-2xl border border-white/20 animate-in slide-in-from-top duration-500">

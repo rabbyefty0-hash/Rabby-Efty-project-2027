@@ -22,7 +22,7 @@ const NAMES = [
   '꧁Rᴀʙʙʏ Eғᴛʏ꧂', 'JOHN DOE', 'JANE SMITH', 'ALEX JOHNSON', 'SAM WILSON'
 ];
 
-export function CardGenerator({ isVpnConnected }: { isVpnConnected?: boolean }) {
+export function CardGenerator({ isVpnConnected, onBack }: { isVpnConnected?: boolean, onBack?: () => void }) {
   const [generatedCards, setGeneratedCards] = useState<CardInfo[]>([]);
   const [selectedType, setSelectedType] = useState('visa');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -137,7 +137,23 @@ export function CardGenerator({ isVpnConnected }: { isVpnConnected?: boolean }) 
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10 text-white">
+    <div 
+      className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10 text-white"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       <div className="max-w-2xl mx-auto space-y-8 pb-32">
         <div className="text-center space-y-4">
           <div className="w-16 h-16 glass-card rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-sm">

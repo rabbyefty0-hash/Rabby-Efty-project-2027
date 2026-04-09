@@ -18,9 +18,10 @@ declare global {
 
 interface ImageGeneratorProps {
   isVpnConnected?: boolean;
+  onBack?: () => void;
 }
 
-export function ImageGenerator({ isVpnConnected }: ImageGeneratorProps) {
+export function ImageGenerator({ isVpnConnected, onBack }: ImageGeneratorProps) {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -478,7 +479,23 @@ export function ImageGenerator({ isVpnConnected }: ImageGeneratorProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-black relative overflow-hidden">
+    <div 
+      className="flex flex-col h-full bg-black relative overflow-hidden"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       {/* Header */}
       <div className="p-4 pt-12 flex items-center justify-between z-10 glass-panel border-b border-white/5 sticky top-0">
         <div className="flex items-center space-x-2">

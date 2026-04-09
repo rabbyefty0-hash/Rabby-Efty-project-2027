@@ -72,7 +72,6 @@ const APPS = [
   { id: 'camera', name: 'Camera', icon: Camera, color: 'text-zinc-800', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'clock', name: 'Clock', icon: Clock, color: 'text-black', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'contacts', name: 'Contacts', icon: Users, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
-  { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'text-red-600', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'music', name: 'Music', icon: Music, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
 ];
 
