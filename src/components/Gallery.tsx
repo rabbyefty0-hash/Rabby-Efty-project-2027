@@ -5,7 +5,11 @@ import { VFSNode, getAllFiles, getNode, deleteNode } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
 import { GoogleGenAI } from '@google/genai';
 
-export function Gallery() {
+interface GalleryProps {
+  onBack?: () => void;
+}
+
+export function Gallery({ onBack }: GalleryProps) {
   const [mediaFiles, setMediaFiles] = useState<VFSNode[]>([]);
   const [previewNode, setPreviewNode] = useState<VFSNode | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -138,7 +142,23 @@ export function Gallery() {
 
   // Group by date (simplified to just a flat grid for now, but we can add headers)
   return (
-    <div className="h-full bg-white dark:bg-black text-black dark:text-white flex flex-col relative overflow-hidden font-sans">
+    <div 
+      className="h-full bg-white dark:bg-black text-black dark:text-white flex flex-col relative overflow-hidden font-sans"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       {/* Header */}
       <div className="pt-12 pb-4 px-4 bg-white/80 dark:bg-black/80 backdrop-blur-xl z-10 flex-shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Photos</h1>

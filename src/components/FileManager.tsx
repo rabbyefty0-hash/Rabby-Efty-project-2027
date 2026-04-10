@@ -8,7 +8,11 @@ import {
 import { VFSNode, getNodesByParent, addNode, deleteNode, renameNode, generateId, getNode, getAllFiles, verifyPermission } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
 
-export function FileManager() {
+interface FileManagerProps {
+  onBack?: () => void;
+}
+
+export function FileManager({ onBack }: FileManagerProps) {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderHistory, setFolderHistory] = useState<{id: string | null, name: string}[]>([{id: null, name: 'On My Device'}]);
   const [nodes, setNodes] = useState<VFSNode[]>([]);
@@ -436,7 +440,23 @@ export function FileManager() {
   const currentFolderName = folderHistory[folderHistory.length - 1].name;
 
   return (
-    <div className="h-full bg-[#F2F2F7] dark:bg-black text-black dark:text-white flex flex-col relative overflow-hidden font-sans">
+    <div 
+      className="h-full bg-[#F2F2F7] dark:bg-black text-black dark:text-white flex flex-col relative overflow-hidden font-sans"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       {/* Header */}
       <div className="pt-12 pb-4 px-4 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-black/5 dark:border-white/10 z-10 flex-shrink-0">
         <div className="flex justify-between items-center mb-2">

@@ -191,7 +191,23 @@ export function TempNumber({ isVpnConnected, onBack }: TempNumberProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-12 pb-24">
+    <div 
+      className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-12 pb-24"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              if (onBack) onBack();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       {/* Toolbar */}
       <div className="bg-white/90 backdrop-blur-xl border-b border-zinc-200 p-4 flex flex-col space-y-3 shadow-sm z-20">
         <div className="flex items-center space-x-3 text-zinc-700">

@@ -455,11 +455,12 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
                 await audioCtxRef.current.resume();
               }
               const source = audioCtxRef.current.createMediaStreamSource(stream);
-              const processor = audioCtxRef.current.createScriptProcessor(4096, 1, 1);
+              const processor = audioCtxRef.current.createScriptProcessor(2048, 1, 1);
               
               const session = await sessionPromise;
               
               processor.onaudioprocess = (e) => {
+                if (isMuted) return;
                 const channelData = e.inputBuffer.getChannelData(0);
                 const pcm16 = new Int16Array(channelData.length);
                 for (let i = 0; i < channelData.length; i++) {
@@ -515,8 +516,9 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
               
               if (mediaStreamDestinationRef.current) {
                 source.connect(mediaStreamDestinationRef.current);
+              } else {
+                source.connect(playbackCtxRef.current.destination);
               }
-              source.connect(playbackCtxRef.current.destination);
               
               const currentTime = playbackCtxRef.current.currentTime;
               const playTime = Math.max(currentTime, nextPlayTimeRef.current);
