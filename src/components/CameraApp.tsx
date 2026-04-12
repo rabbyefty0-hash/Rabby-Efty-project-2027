@@ -3,6 +3,7 @@ import { Camera, Video, FlipHorizontal, Circle, Square, X, Sparkles, Send, Loade
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { GoogleGenAI } from '@google/genai';
+import { addNode, generateId, VFSNode } from '../lib/vfs';
 
 interface CameraAppProps {
   onClose: () => void;
@@ -168,15 +169,26 @@ export default function CameraApp({ onClose }: CameraAppProps) {
           chunksRef.current.push(e.data);
         }
       };
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        // In a real app, you'd save this or show a preview
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `video-${Date.now()}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
+        try {
+          const newNode: VFSNode = {
+            id: generateId(),
+            name: `video-${Date.now()}.webm`,
+            type: 'file',
+            parentId: null,
+            data: blob,
+            mimeType: 'video/webm',
+            size: blob.size,
+            createdAt: Date.now(),
+            modifiedAt: Date.now()
+          };
+          await addNode(newNode);
+          alert('Video saved to Gallery!');
+        } catch (e) {
+          console.error("Failed to save video", e);
+          alert("Failed to save video");
+        }
       };
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
@@ -223,11 +235,28 @@ export default function CameraApp({ onClose }: CameraAppProps) {
               <Sparkles className="w-4 h-4" />
               Analyze
             </button>
-            <button onClick={() => {
-              const a = document.createElement('a');
-              a.href = capturedImage;
-              a.download = `photo-${Date.now()}.jpg`;
-              a.click();
+            <button onClick={async () => {
+              try {
+                const res = await fetch(capturedImage);
+                const blob = await res.blob();
+                const newNode: VFSNode = {
+                  id: generateId(),
+                  name: `photo-${Date.now()}.jpg`,
+                  type: 'file',
+                  parentId: null,
+                  data: blob,
+                  mimeType: 'image/jpeg',
+                  size: blob.size,
+                  createdAt: Date.now(),
+                  modifiedAt: Date.now()
+                };
+                await addNode(newNode);
+                alert('Saved to Gallery!');
+                setCapturedImage(null);
+              } catch (e) {
+                console.error("Failed to save photo", e);
+                alert("Failed to save photo");
+              }
             }} className="px-4 py-2 bg-white text-black rounded-full font-medium text-sm">
               Save
             </button>
