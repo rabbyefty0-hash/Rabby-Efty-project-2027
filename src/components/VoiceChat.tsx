@@ -11,7 +11,19 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState('');
-  const [transcript, setTranscript] = useState<{ role: 'user' | 'model', text: string }[]>([]);
+  const [transcript, setTranscript] = useState<{ role: 'user' | 'model', text: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem('voiceChatTranscript');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('voiceChatTranscript', JSON.stringify(transcript));
+  }, [transcript]);
+
   const [isSpeaking, setIsSpeaking] = useState<number | null>(null);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [autoSpeak, setAutoSpeak] = useState(false);
@@ -87,9 +99,10 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
     setError('');
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const customKey = localStorage.getItem('custom_gemini_api_key');
+      const apiKey = customKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        throw new Error('API Key is missing in the environment.');
+        throw new Error('API Key is missing. Please set it in Settings.');
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -101,6 +114,10 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
       
       nextPlayTimeRef.current = playbackCtxRef.current.currentTime;
 
+      const historyContext = transcript.length > 0 
+        ? `\n\nPrevious conversation history:\n${transcript.slice(-20).map(t => `${t.role === 'user' ? 'User' : 'You'}: ${t.text}`).join('\n')}`
+        : '';
+
       const sessionPromise = ai.live.connect({
         model: "gemini-3.1-flash-live-preview",
         config: {
@@ -108,7 +125,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } }
           },
-          systemInstruction: "You are ꧁Rᴀʙʙʏ Eғᴛʏ꧂, a helpful and friendly AI assistant. You are part of the ꧁Rᴀʙʙʏ Eғᴛʏ꧂ suite of tools. Keep your responses concise and conversational. Always identify yourself as ꧁Rᴀʙʙʏ Eғᴛʏ꧂ if asked. If the user shares video, comment on what you see. Ensure consistent voice volume and clarity throughout the response. Maintain a steady and natural tone without fluctuations.",
+          systemInstruction: `You are ꧁Rᴀʙʙʏ Eғᴛʏ꧂, a helpful and friendly AI assistant. You are part of the ꧁Rᴀʙʙʏ Eғᴛʏ꧂ suite of tools. Keep your responses concise and conversational. Always identify yourself as ꧁Rᴀʙʙʏ Eғᴛʏ꧂ if asked. If the user shares video, comment on what you see. Ensure consistent voice volume and clarity throughout the response. Maintain a steady and natural tone without fluctuations.${historyContext}`,
           outputAudioTranscription: {},
           inputAudioTranscription: {},
         },

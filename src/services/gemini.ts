@@ -1,9 +1,17 @@
 import { GoogleGenAI, Type, Content } from '@google/genai';
 import { MeetingAgenda, UploadedFile, ChatMessage } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+export function getGeminiClient() {
+  const customKey = localStorage.getItem('custom_gemini_api_key');
+  const apiKey = customKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set it in Settings.");
+  }
+  return new GoogleGenAI({ apiKey });
+}
 
 export async function generateAgenda(files: UploadedFile[]): Promise<MeetingAgenda> {
+  const ai = getGeminiClient();
   const parts = files.map((file) => ({
     inlineData: {
       mimeType: file.type,
@@ -19,7 +27,7 @@ export async function generateAgenda(files: UploadedFile[]): Promise<MeetingAgen
     Optionally, suggest a start time for each topic assuming the meeting starts at 10:00 AM.
   `;
 
-  const response = await ai.models.generateContent({
+  const response = await getGeminiClient().models.generateContent({
     model: 'gemini-3.1-pro-preview',
     contents: {
       parts: [...parts, { text: prompt }],
@@ -115,7 +123,7 @@ export async function sendChatMessage(message: string, signal?: AbortSignal): Pr
 
   const userContent: Content = { role: 'user', parts };
   
-  const response = await ai.models.generateContent({
+  const response = await getGeminiClient().models.generateContent({
     model: 'gemini-3.1-pro-preview',
     contents: [...chatHistory, userContent],
     config: {
@@ -226,7 +234,7 @@ export async function compareModels(
   };
 
   const [responseA, responseB] = await Promise.all([
-    ai.models.generateContent({
+    getGeminiClient().models.generateContent({
       model: mode === 'image' ? 'gemini-2.5-flash-image' : (modelAId.includes('style') ? 'gemini-3.1-pro-preview' : modelAId),
       contents: { parts: partsA },
       config: mode === 'image' ? {
@@ -236,7 +244,7 @@ export async function compareModels(
         tools: [{ googleSearch: {} }],
       },
     }),
-    ai.models.generateContent({
+    getGeminiClient().models.generateContent({
       model: mode === 'image' ? 'gemini-2.5-flash-image' : (modelBId.includes('style') ? 'gemini-3.1-pro-preview' : modelBId),
       contents: { parts: partsB },
       config: mode === 'image' ? {

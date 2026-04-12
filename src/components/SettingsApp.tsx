@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { useTheme } from '../ThemeContext';
-import { ArrowLeft, Check, Palette, Type, Square, Circle, Layout, Image as ImageIcon, Upload } from 'lucide-react';
+import { ArrowLeft, Check, Palette, Type, Square, Circle, Layout, Image as ImageIcon, Upload, Key } from 'lucide-react';
 
 export function SettingsApp({ onBack }: { onBack: () => void }) {
   const { 
@@ -204,6 +204,47 @@ export function SettingsApp({ onBack }: { onBack: () => void }) {
                   style={{ backgroundImage: `url(${url})` }}
                 />
               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* API Key */}
+        <div className="bg-[#2c2c2e] rounded-xl p-4 md:col-span-2">
+          <div className="flex items-center mb-4 text-white/80">
+            <Key className="w-5 h-5 mr-2" />
+            <h2 className="font-medium">API Key</h2>
+          </div>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-white/60">
+              Set your own Gemini API key for advanced features and continuous live voice chat.
+            </p>
+            <div className="flex gap-2">
+              <input 
+                type="password" 
+                placeholder="Enter Gemini API Key..."
+                className="flex-1 bg-[#1c1c1e] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                defaultValue={localStorage.getItem('custom_gemini_api_key') || ''}
+                onChange={(e) => {
+                  const val = e.target.value.trim();
+                  if (val) {
+                    localStorage.setItem('custom_gemini_api_key', val);
+                  } else {
+                    localStorage.removeItem('custom_gemini_api_key');
+                  }
+                }}
+              />
+              <button 
+                onClick={async () => {
+                  if (window.aistudio?.openSelectKey) {
+                    await window.aistudio.openSelectKey();
+                  } else {
+                    alert("API Key saved locally.");
+                  }
+                }}
+                className="bg-primary text-white px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors whitespace-nowrap"
+              >
+                Select Key
+              </button>
             </div>
           </div>
         </div>
