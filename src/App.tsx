@@ -663,7 +663,7 @@ function AppContent() {
             >
               <Home 
                 onNavigate={handleNavigate} 
-                recentApps={Array.from(new Set([...history].reverse())).filter(id => id !== 'home' && id !== 'apps' && id !== 'status').slice(0, 8).map(id => APPS.find(app => app.id === id)).filter(Boolean)}
+                recentApps={Array.from(new Set([...history].reverse())).filter(id => id !== 'home' && id !== 'apps' && id !== 'status').map(id => APPS.find(app => app.id === id)).filter(Boolean)}
               />
             </motion.div>
           ) : activeTab === 'apps' ? (

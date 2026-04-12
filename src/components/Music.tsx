@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X, SkipBack, SkipForward } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getAllFiles, VFSNode, verifyPermission } from '../lib/vfs';
+import { getAllFiles, VFSNode, verifyPermission, addNode } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
 import { GoogleGenAI } from '@google/genai';
 
@@ -296,6 +296,39 @@ export function MusicApp({ onBack }: MusicProps) {
       <div className="flex-1 overflow-y-auto p-4 pb-40 custom-scrollbar">
         {activeTab === 'library' ? (
           <div className="space-y-2">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold">Your Tracks</h2>
+              <label className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium cursor-pointer transition-colors">
+                <Upload className="w-3.5 h-3.5" />
+                Import Audio
+                <input 
+                  type="file" 
+                  accept="audio/*" 
+                  multiple 
+                  className="hidden" 
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      for (let i = 0; i < e.target.files.length; i++) {
+                        const file = e.target.files[i];
+                        const newNode: VFSNode = {
+                          id: Math.random().toString(36).substring(2, 15),
+                          name: file.name,
+                          type: 'file',
+                          parentId: null,
+                          data: file,
+                          mimeType: file.type || 'audio/mpeg',
+                          size: file.size,
+                          createdAt: Date.now(),
+                          modifiedAt: Date.now()
+                        };
+                        await addNode(newNode);
+                      }
+                      loadAudioFiles();
+                    }
+                  }}
+                />
+              </label>
+            </div>
             {audioFiles.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-white/40">
                 <MusicIcon className="w-16 h-16 mb-4 opacity-50" />
