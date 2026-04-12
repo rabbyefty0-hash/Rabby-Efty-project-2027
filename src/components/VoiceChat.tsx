@@ -59,8 +59,6 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
   const playbackCtxRef = useRef<AudioContext | null>(null);
   const nextPlayTimeRef = useRef<number>(0);
   const activeSourcesRef = useRef<AudioBufferSourceNode[]>([]);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const mediaStreamDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
   const speakText = (text: string, index: number) => {
     if ('speechSynthesis' in window) {
@@ -77,7 +75,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
       if (preferredVoice) utterance.voice = preferredVoice;
       
       utterance.rate = 1.0;
-      utterance.pitch = 1.1;
+      utterance.pitch = 1.0;
       utterance.volume = 1.0;
       
       window.speechSynthesis.speak(utterance);
@@ -101,24 +99,6 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
         await playbackCtxRef.current.resume();
       }
       
-      // Workaround for mobile speaker routing
-      mediaStreamDestinationRef.current = playbackCtxRef.current.createMediaStreamDestination();
-      const audioEl = new Audio();
-      audioEl.autoplay = true;
-      (audioEl as any).playsInline = true;
-      audioEl.srcObject = mediaStreamDestinationRef.current.stream;
-      audioElementRef.current = audioEl;
-      
-      if ('setSinkId' in audioEl) {
-        try {
-          await (audioEl as any).setSinkId('');
-        } catch (e) {
-          console.warn('setSinkId not supported', e);
-        }
-      }
-      
-      audioEl.play().catch(e => console.error("Audio play error:", e));
-
       nextPlayTimeRef.current = playbackCtxRef.current.currentTime;
 
       const sessionPromise = ai.live.connect({
@@ -268,13 +248,7 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
                 const source = playbackCtxRef.current.createBufferSource();
                 source.buffer = audioBuffer;
                 
-                // Connect to the audio element destination (for mobile speaker routing) 
-                // OR the default destination (for desktop)
-                if (mediaStreamDestinationRef.current) {
-                  source.connect(mediaStreamDestinationRef.current);
-                } else {
-                  source.connect(playbackCtxRef.current.destination);
-                }
+                source.connect(playbackCtxRef.current.destination);
 
                 const currentTime = playbackCtxRef.current.currentTime;
                 if (nextPlayTimeRef.current < currentTime) {
@@ -379,15 +353,6 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
       playbackCtxRef.current.close().catch(console.error);
     }
     playbackCtxRef.current = null;
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.srcObject = null;
-      audioElementRef.current = null;
-    }
-    if (mediaStreamDestinationRef.current) {
-      mediaStreamDestinationRef.current.disconnect();
-      mediaStreamDestinationRef.current = null;
-    }
     if (sessionRef.current) {
       sessionRef.current.then((s: any) => s.close()).catch(console.error);
       sessionRef.current = null;

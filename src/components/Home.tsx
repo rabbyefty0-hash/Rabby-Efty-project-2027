@@ -1,11 +1,7 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Sparkles, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock, Images } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../ThemeContext';
-import * as ReactWindow from 'react-window';
-
-// @ts-ignore
-const List = ReactWindow.FixedSizeList || ReactWindow.default?.FixedSizeList;
 
 interface HomeProps {
   onNavigate: (tab: any) => void;
@@ -161,19 +157,6 @@ const SmartStackWidget = memo(({ onNavigate }: { onNavigate: (tab: any) => void 
 
 export function Home({ onNavigate, recentApps }: HomeProps) {
   const { iconShape, iconSize } = useTheme();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        setContainerWidth(entry.contentRect.width);
-      }
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   const getIconShapeClass = () => {
     switch (iconShape) {
@@ -209,39 +192,23 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
               <Clock className="w-3.5 h-3.5 text-white/50" />
               <h3 className="text-white/70 font-medium text-[10px] tracking-widest uppercase">Recent</h3>
             </div>
-            <div className="h-[100px] w-full" ref={containerRef}>
-              {containerWidth > 0 && (
-                <List
-                  className="hide-scrollbar"
-                  layout="horizontal"
-                  height={100}
-                  itemCount={recentApps.length}
-                  itemSize={80} // Width of each item + gap
-                  width={containerWidth}
-                  itemData={{ recentApps, onNavigate, getIconSizeClass, getIconShapeClass }}
+            <div className="flex overflow-x-auto hide-scrollbar gap-3 pb-2 pt-1 px-1">
+              {recentApps.map((app, index) => (
+                <motion.button
+                  key={app.id}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
+                  onClick={() => onNavigate(app.id)}
+                  className="flex flex-col items-center space-y-1.5 group flex-shrink-0 w-[70px]"
                 >
-                  {({ index, style, data }: any) => {
-                    const app = data.recentApps[index];
-                    return (
-                      <div style={{ ...style, display: 'flex', justifyContent: 'center' }}>
-                        <motion.button
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
-                          onClick={() => data.onNavigate(app.id)}
-                          className="flex flex-col items-center space-y-1.5 group flex-shrink-0 w-[70px]"
-                        >
-                          <div className={`${data.getIconSizeClass()} ${data.getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-                            <app.icon className={`w-6 h-6 sm:w-7 sm:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
-                          </div>
-                          <span className="text-[10px] font-medium text-white/90 truncate w-14 text-center drop-shadow-md tracking-wide">{app.name}</span>
-                        </motion.button>
-                      </div>
-                    );
-                  }}
-                </List>
-              )}
+                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
+                    <app.icon className={`w-6 h-6 sm:w-7 sm:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
+                  </div>
+                  <span className="text-[10px] font-medium text-white/90 truncate w-14 text-center drop-shadow-md tracking-wide">{app.name}</span>
+                </motion.button>
+              ))}
             </div>
           </div>
         )}

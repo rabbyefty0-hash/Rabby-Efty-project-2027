@@ -65,7 +65,7 @@ export function Chatbot({ messages, onSendMessage, onClearChat, onStopGeneration
                              voices.find(v => v.lang.startsWith('en'));
       if (preferredVoice) utterance.voice = preferredVoice;
       utterance.rate = 1.0;
-      utterance.pitch = 1.1;
+      utterance.pitch = 1.0;
       utterance.volume = 1.0;
       window.speechSynthesis.speak(utterance);
     }
