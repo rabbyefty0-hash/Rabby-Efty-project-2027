@@ -324,7 +324,23 @@ export default function CameraApp({ onClose }: CameraAppProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black relative">
+    <div 
+      className="flex flex-col h-full bg-black relative"
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div 
+        className="absolute inset-y-0 left-0 w-4 z-50"
+        onPointerDown={(e) => {
+          const startX = e.clientX;
+          const handlePointerUp = (upEvent: PointerEvent) => {
+            if (upEvent.clientX - startX > 50) {
+              onClose();
+            }
+            window.removeEventListener('pointerup', handlePointerUp);
+          };
+          window.addEventListener('pointerup', handlePointerUp);
+        }}
+      />
       <canvas ref={canvasRef} className="hidden" />
       
       {/* Top Controls */}

@@ -714,7 +714,6 @@ function AppContent() {
                   {activeTab === 'maps' && <MapsApp onBack={handleBack} />}
                   {activeTab === 'camera' && <CameraApp onClose={() => handleNavigate('home')} />}
                   {activeTab === 'contacts' && <ContactsApp onBack={handleBack} />}
-                  {activeTab === 'youtube' && <YouTubeApp onBack={handleBack} />}
                   {activeTab === 'status' && <SystemStatus 
                     isVpnConnected={isVpnConnected} 
                     theme={theme}

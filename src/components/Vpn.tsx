@@ -48,6 +48,8 @@ export function Vpn({ isConnected, setIsConnected, onBack }: VpnProps) {
   const [selectedServer, setSelectedServer] = useState(SERVERS[0]);
   const [showServers, setShowServers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [killSwitch, setKillSwitch] = useState(false);
+  const [autoConnect, setAutoConnect] = useState(false);
   
   // Connection details state
   const [connectionStartTime, setConnectionStartTime] = useState<number | null>(null);
@@ -265,6 +267,40 @@ export function Vpn({ isConnected, setIsConnected, onBack }: VpnProps) {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Advanced Settings */}
+        <div className="glass-card liquid-glass p-4 rounded-3xl inline-block mx-auto border border-white/10 w-full text-left space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Shield className="w-5 h-5 text-indigo-400" />
+              <div>
+                <p className="text-sm font-medium">Kill Switch</p>
+                <p className="text-[10px] text-white/50">Block internet if VPN drops</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setKillSwitch(!killSwitch)}
+              className={`w-10 h-6 rounded-full transition-colors relative ${killSwitch ? 'bg-emerald-500' : 'bg-white/20'}`}
+            >
+              <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${killSwitch ? 'left-5' : 'left-1'}`} />
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Power className="w-5 h-5 text-indigo-400" />
+              <div>
+                <p className="text-sm font-medium">Auto-Connect</p>
+                <p className="text-[10px] text-white/50">Connect on app launch</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setAutoConnect(!autoConnect)}
+              className={`w-10 h-6 rounded-full transition-colors relative ${autoConnect ? 'bg-emerald-500' : 'bg-white/20'}`}
+            >
+              <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${autoConnect ? 'left-5' : 'left-1'}`} />
+            </button>
+          </div>
         </div>
       </div>
 
