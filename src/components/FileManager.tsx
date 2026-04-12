@@ -16,8 +16,6 @@ export function FileManager({ onBack }: FileManagerProps) {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [folderHistory, setFolderHistory] = useState<{id: string | null, name: string}[]>([{id: null, name: 'On My Device'}]);
   const [nodes, setNodes] = useState<VFSNode[]>([]);
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
   const [isConnectingDevice, setIsConnectingDevice] = useState(false);
   const [selectedNode, setSelectedNode] = useState<VFSNode | null>(null);
   const [previewNode, setPreviewNode] = useState<VFSNode | null>(null);
@@ -128,8 +126,9 @@ export function FileManager({ onBack }: FileManagerProps) {
     }
   };
 
-  const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return;
+  const handleCreateFolderPrompt = async () => {
+    const folderName = window.prompt("Enter folder name:");
+    if (!folderName || !folderName.trim()) return;
     
     let parentHandle = null;
     if (currentFolderId) {
@@ -142,7 +141,7 @@ export function FileManager({ onBack }: FileManagerProps) {
     let newHandle = null;
     if (parentHandle) {
       try {
-        newHandle = await parentHandle.getDirectoryHandle(newFolderName.trim(), { create: true });
+        newHandle = await parentHandle.getDirectoryHandle(folderName.trim(), { create: true });
       } catch (e) {
         console.error("Failed to create directory on device", e);
         alert("Failed to create folder on device.");
@@ -152,7 +151,7 @@ export function FileManager({ onBack }: FileManagerProps) {
 
     const newNode: VFSNode = {
       id: generateId(),
-      name: newFolderName.trim(),
+      name: folderName.trim(),
       type: 'folder',
       parentId: currentFolderId,
       handle: newHandle,
@@ -160,8 +159,6 @@ export function FileManager({ onBack }: FileManagerProps) {
       modifiedAt: Date.now()
     };
     await addNode(newNode);
-    setNewFolderName('');
-    setIsCreatingFolder(false);
     loadNodes();
   };
 
@@ -487,7 +484,7 @@ export function FileManager({ onBack }: FileManagerProps) {
                   <span className="text-xs hidden sm:inline">{isConnectingDevice ? 'Syncing...' : 'Sync Device'}</span>
                 </button>
                 <button 
-                  onClick={() => setIsCreatingFolder(true)} 
+                  onClick={handleCreateFolderPrompt} 
                   className="flex items-center gap-1.5 bg-blue-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-blue-600 transition-colors active:scale-95"
                 >
                   <Plus className="w-5 h-5" />
@@ -544,33 +541,6 @@ export function FileManager({ onBack }: FileManagerProps) {
           </div>
         ) : (
           <>
-            {isCreatingFolder && (
-              <div className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 rounded-xl mb-4 shadow-sm">
-                <Folder className="w-8 h-8 text-blue-400 fill-blue-400/20" />
-                <input
-                  autoFocus
-                  type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                  onBlur={(e) => {
-                    if (!e.relatedTarget || !(e.relatedTarget as HTMLElement).closest('.create-folder-btn')) {
-                      setIsCreatingFolder(false);
-                    }
-                  }}
-                  placeholder="New Folder"
-                  className="flex-1 bg-transparent focus:outline-none text-lg"
-                />
-                <button
-                  className="create-folder-btn px-4 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 active:scale-95 transition-all"
-                  onClick={handleCreateFolder}
-                  onMouseDown={(e) => e.preventDefault()}
-                >
-                  Done
-                </button>
-              </div>
-            )}
-
             {viewMode === 'grid' ? (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
             {uploadingFiles.map(file => (
@@ -644,14 +614,14 @@ export function FileManager({ onBack }: FileManagerProps) {
                 )}
               </div>
             ))}
-            {nodes.length === 0 && uploadingFiles.length === 0 && !isCreatingFolder && (
+            {nodes.length === 0 && uploadingFiles.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
                 <Folder className="w-16 h-16 mb-4 opacity-20" />
                 <p className="mb-6">{activeTab === 'recents' ? 'No recent files' : 'Folder is empty'}</p>
                 {activeTab === 'browse' && (
                   <div className="flex gap-4">
                     <button 
-                      onClick={() => setIsCreatingFolder(true)}
+                      onClick={handleCreateFolderPrompt}
                       className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-full font-medium shadow-md hover:bg-blue-600 transition-colors active:scale-95"
                     >
                       <Plus className="w-5 h-5" />
@@ -755,14 +725,14 @@ export function FileManager({ onBack }: FileManagerProps) {
                 )}
               </div>
             ))}
-            {nodes.length === 0 && uploadingFiles.length === 0 && !isCreatingFolder && (
+            {nodes.length === 0 && uploadingFiles.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                 <Folder className="w-16 h-16 mb-4 opacity-20" />
                 <p className="mb-6">{activeTab === 'recents' ? 'No recent files' : 'Folder is empty'}</p>
                 {activeTab === 'browse' && (
                   <div className="flex gap-4">
                     <button 
-                      onClick={() => setIsCreatingFolder(true)}
+                      onClick={handleCreateFolderPrompt}
                       className="flex items-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-full font-medium shadow-md hover:bg-blue-600 transition-colors active:scale-95"
                     >
                       <Plus className="w-5 h-5" />
