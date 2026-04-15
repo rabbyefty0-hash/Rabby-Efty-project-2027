@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings, Plus, Shield, Search, Menu, MoreVertical, ShieldAlert, RefreshCw, Triangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface BrowserProps {
@@ -44,6 +44,10 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
   const [useProxy, setUseProxy] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTabSwitcher, setShowTabSwitcher] = useState(false);
+  const [showShields, setShowShields] = useState(false);
+  const [shieldsUp, setShieldsUp] = useState(true);
+  const [trackersBlocked, setTrackersBlocked] = useState(Math.floor(Math.random() * 50) + 10);
   const [tempHomeUrl, setTempHomeUrl] = useState(homeUrl);
   const [bookmarks, setBookmarks] = useState<{url: string, title: string}[]>(() => {
     const saved = localStorage.getItem('browser_bookmarks');
@@ -64,13 +68,12 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
     const interval = setInterval(() => {
       const now = Date.now();
       setTabs(prevTabs => prevTabs.map(tab => {
-        // Suspend tabs inactive for more than 5 minutes (300000 ms)
         if (tab.id !== activeTabId && !tab.isSuspended && (now - tab.lastAccessed > 300000)) {
           return { ...tab, isSuspended: true };
         }
         return tab;
       }));
-    }, 60000); // Check every minute
+    }, 60000);
     return () => clearInterval(interval);
   }, [activeTabId]);
 
@@ -97,11 +100,11 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
     };
     setTabs([...tabs, newTab]);
     setActiveTabId(newTab.id);
+    setShowTabSwitcher(false);
   };
 
   const closeTab = (id: string) => {
     if (tabs.length === 1) {
-      // If closing the last tab, just reset it
       updateTab(id, {
         url: homeUrl,
         inputUrl: homeUrl.replace('https://', '').replace('http://', ''),
@@ -111,6 +114,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
         isLoading: true,
         loadError: false
       });
+      setShowTabSwitcher(false);
       return;
     }
     
@@ -137,28 +141,15 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
     }
   };
 
-  // Loading timeout handler
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     if (activeTab.isLoading) {
       timeout = setTimeout(() => {
         updateActiveTab({ isLoading: false, loadError: true });
-      }, 15000); // 15 second timeout
+      }, 15000);
     }
     return () => clearTimeout(timeout);
   }, [activeTab.isLoading, activeTabId]);
-
-  const toggleVpn = () => {
-    if (isVpnConnected) {
-      setIsVpnConnected(false);
-    } else {
-      setIsConnecting(true);
-      setTimeout(() => {
-        setIsConnecting(false);
-        setIsVpnConnected(true);
-      }, 1500);
-    }
-  };
 
   const getEffectiveUrl = (targetUrl: string, proxyEnabled: boolean) => {
     if (proxyEnabled && !targetUrl.includes('google.com/search?igu=1') && !targetUrl.includes('google.com')) {
@@ -202,6 +193,11 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
       isSuspended: false,
       lastAccessed: Date.now()
     });
+    
+    // Simulate trackers blocked
+    if (shieldsUp) {
+      setTimeout(() => setTrackersBlocked(prev => prev + Math.floor(Math.random() * 5)), 2000);
+    }
   };
 
   const handleNavigate = (e: React.FormEvent) => {
@@ -264,7 +260,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
 
   return (
     <div 
-      className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-12 pb-24"
+      className="flex-1 flex flex-col h-full relative z-10 bg-zinc-100 overflow-hidden"
       style={{ touchAction: 'pan-y' }}
     >
       <div 
@@ -280,281 +276,216 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
           window.addEventListener('pointerup', handlePointerUp);
         }}
       />
-      {/* Tab Bar */}
-      <div className="bg-zinc-100/80 backdrop-blur-md flex items-center px-2 pt-2 pb-1 space-x-1 overflow-x-auto custom-scrollbar border-b border-zinc-200">
-        {tabs.map(tab => (
-          <div 
-            key={tab.id} 
-            className={`flex items-center space-x-2 px-3 py-1.5 rounded-t-lg min-w-[120px] max-w-[180px] cursor-pointer transition-colors ${activeTabId === tab.id ? 'bg-white shadow-sm text-zinc-800' : 'bg-transparent text-zinc-500 hover:bg-zinc-200/50'}`} 
-            onClick={() => {
-              setActiveTabId(tab.id);
-              updateTab(tab.id, { lastAccessed: Date.now() });
-            }}
+
+      {/* Tab Switcher View */}
+      <AnimatePresence>
+        {showTabSwitcher && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="absolute inset-0 z-50 bg-zinc-900 flex flex-col"
           >
-            <Globe className={`w-3 h-3 shrink-0 ${tab.isSuspended ? 'text-zinc-300' : 'text-indigo-400'}`} />
-            <span className="text-xs truncate flex-1 font-medium">{tab.title}</span>
-            <button 
-              onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} 
-              className="hover:bg-zinc-200 rounded-full p-0.5 text-zinc-400 hover:text-zinc-700 transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        ))}
+            <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900 pt-safe">
+              <button onClick={() => setShowTabSwitcher(false)} className="text-zinc-400 hover:text-white">
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <h2 className="text-white font-medium">Tabs</h2>
+              <button onClick={addTab} className="text-zinc-400 hover:text-white">
+                <Plus className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-4 content-start">
+              {tabs.map(tab => (
+                <div 
+                  key={tab.id} 
+                  className={`bg-zinc-800 rounded-xl overflow-hidden flex flex-col border-2 transition-colors ${activeTabId === tab.id ? 'border-orange-500' : 'border-transparent'}`}
+                >
+                  <div className="flex items-center justify-between p-2 bg-zinc-800/80 border-b border-zinc-700">
+                    <div className="flex items-center space-x-2 overflow-hidden">
+                      <Globe className="w-4 h-4 text-zinc-400 shrink-0" />
+                      <span className="text-xs text-zinc-300 truncate">{tab.title}</span>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="text-zinc-400 hover:text-white p-1">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div 
+                    className="h-32 bg-white cursor-pointer relative"
+                    onClick={() => {
+                      setActiveTabId(tab.id);
+                      updateTab(tab.id, { lastAccessed: Date.now() });
+                      setShowTabSwitcher(false);
+                    }}
+                  >
+                    {/* Simplified preview */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-100">
+                      <span className="text-zinc-400 text-sm font-medium truncate px-4">{tab.inputUrl}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-t border-zinc-800 bg-zinc-900 flex justify-center pb-safe">
+              <button onClick={addTab} className="flex items-center space-x-2 text-white bg-zinc-800 px-6 py-3 rounded-full font-medium hover:bg-zinc-700 transition-colors">
+                <Plus className="w-5 h-5" />
+                <span>New Tab</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Top Bar (Brave Style) */}
+      <div className="bg-white border-b border-zinc-200 px-3 py-2 flex items-center gap-3 shadow-sm z-20 pt-safe">
         <button 
-          onClick={addTab} 
-          className="p-1.5 hover:bg-zinc-200/80 rounded-md text-zinc-500 transition-colors ml-1"
-          title="New Tab"
+          onClick={() => setShowShields(true)} 
+          className="p-1.5 rounded-full hover:bg-zinc-100 transition-colors"
         >
-          <Plus className="w-4 h-4" />
+          {shieldsUp ? <ShieldCheck className="w-6 h-6 text-orange-500" /> : <Shield className="w-6 h-6 text-zinc-400" />}
+        </button>
+        
+        <form onSubmit={handleNavigate} className="flex-1 flex items-center bg-zinc-100/80 rounded-full px-4 py-2.5 border border-transparent focus-within:border-orange-500/30 focus-within:bg-white focus-within:shadow-sm transition-all">
+          <Lock className="w-3.5 h-3.5 text-zinc-500 mr-2 shrink-0" />
+          <input 
+            type="text" 
+            value={activeTab.inputUrl}
+            onChange={(e) => updateActiveTab({ inputUrl: e.target.value })}
+            className="flex-1 bg-transparent text-[15px] outline-none text-zinc-900 placeholder:text-zinc-400 min-w-0"
+            placeholder="Search or type URL"
+          />
+          {activeTab.isLoading ? (
+            <RotateCw className="w-4 h-4 text-zinc-400 animate-spin shrink-0 ml-2" />
+          ) : (
+            <button type="button" onClick={() => {
+              updateActiveTab({ isLoading: true, loadError: false, isSuspended: false });
+              const currentUrl = activeTab.url;
+              updateActiveTab({ url: null });
+              setTimeout(() => updateActiveTab({ url: currentUrl }), 10);
+            }} className="p-1 hover:bg-zinc-200 rounded-full shrink-0 ml-1">
+              <RefreshCw className="w-4 h-4 text-zinc-500" />
+            </button>
+          )}
+        </form>
+        
+        <button className="p-1.5 rounded-full hover:bg-zinc-100 transition-colors">
+          <Triangle className="w-6 h-6 text-red-500 fill-red-500" />
         </button>
       </div>
 
-      {/* Browser Toolbar */}
-      <div className="bg-white/90 backdrop-blur-xl border-b border-zinc-200 p-3 flex flex-col space-y-3 shadow-sm">
-        <div className="flex flex-col space-y-3 text-zinc-700">
-          <form onSubmit={handleNavigate} className={`w-full flex items-center bg-white/60 backdrop-blur-md border rounded-full px-4 py-2 shadow-sm focus-within:bg-white/90 focus-within:shadow-[0_8px_32px_rgba(0,0,0,0.1)] focus-within:scale-[1.01] transition-all duration-300 ease-out ${isVpnConnected ? 'border-green-500/30 ring-1 ring-green-500/20' : 'border-white/60 focus-within:border-indigo-200'}`}>
-            <AnimatePresence mode="wait">
-              {isVpnConnected ? (
-                <motion.div
-                  key="vpn-lock"
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
-                >
-                  <ShieldCheck className="w-3.5 h-3.5 text-green-500 mr-2" />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="normal-lock"
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.5, opacity: 0 }}
-                >
-                  <Lock className="w-3.5 h-3.5 text-zinc-400 mr-2" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <input 
-              type="text" 
-              value={activeTab.inputUrl}
-              onChange={(e) => updateActiveTab({ inputUrl: e.target.value })}
-              className="flex-1 bg-transparent text-[15px] outline-none text-zinc-800 placeholder:text-zinc-400"
-              placeholder={isVpnConnected ? "Browsing securely via VPN..." : "Search or enter URL..."}
+      {/* Shields Dropdown/Modal */}
+      <AnimatePresence>
+        {showShields && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/20 z-30"
+              onClick={() => setShowShields(false)}
             />
-            <button 
-              type="button"
-              onClick={toggleBookmark}
-              className={`p-1 hover:bg-zinc-100 rounded-md transition-colors mr-1 ${isBookmarked ? 'text-yellow-500' : 'text-zinc-400 hover:text-yellow-500'}`}
-              title={isBookmarked ? "Remove Bookmark" : "Add Bookmark"}
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="absolute top-16 left-2 right-2 md:left-4 md:w-80 bg-white rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden z-40"
             >
-              <Star className={`w-3.5 h-3.5 ${isBookmarked ? 'fill-current' : ''}`} />
-            </button>
-            <button 
-              type="button"
-              onClick={openExternal}
-              className="p-1 hover:bg-zinc-100 rounded-md text-zinc-400 hover:text-indigo-500 transition-colors"
-              title="Open in New Tab"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </button>
-          </form>
-
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center space-x-1">
-              <button 
-                onClick={goBack}
-                disabled={activeTab.historyIndex === 0}
-                className="p-2 hover:bg-zinc-200/50 rounded-full transition-all disabled:opacity-20 active:scale-90"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={goForward}
-                disabled={activeTab.historyIndex === activeTab.history.length - 1}
-                className="p-2 hover:bg-zinc-200/50 rounded-full transition-all disabled:opacity-20 active:scale-90"
-              >
-                <ArrowRight className="w-5 h-5" />
-              </button>
-              <button 
-                className="p-2 hover:bg-zinc-200/50 rounded-full transition-all active:scale-90"
-                onClick={() => {
-                  updateActiveTab({ isLoading: true, loadError: false, isSuspended: false });
-                  const currentUrl = activeTab.url;
-                  updateActiveTab({ url: null });
-                  setTimeout(() => updateActiveTab({ url: currentUrl }), 10);
-                }}
-              >
-                <RotateCw className={`w-5 h-5 ${activeTab.isLoading ? 'animate-spin text-indigo-500' : ''}`} />
-              </button>
-              <button 
-                className="p-2 hover:bg-zinc-200/50 rounded-full transition-all active:scale-90"
-                onClick={() => navigateTo(homeUrl)}
-              >
-                <Home className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <button 
-              onClick={toggleVpn}
-              disabled={isConnecting}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
-                isVpnConnected 
-                  ? 'bg-green-500/10 text-green-600 border border-green-500/20' 
-                  : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300 border border-transparent'
-              }`}
-            >
-              {isConnecting ? (
-                <RotateCw className="w-3 h-3 animate-spin" />
-              ) : (
-                <ShieldCheck className={`w-3 h-3 ${isVpnConnected ? 'text-green-500' : 'text-zinc-400'}`} />
-              )}
-              <span>{isConnecting ? 'Securing...' : isVpnConnected ? 'VPN ON' : 'VPN OFF'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Secondary Toolbar: Proxy & Info */}
-        <div className="flex items-center justify-between px-2 pb-1 relative">
-          <div className="flex items-center space-x-4">
-            <button 
-              onClick={() => {
-                setUseProxy(!useProxy);
-                const currentBaseUrl = activeTab.history[activeTab.historyIndex];
-                const effectiveUrl = getEffectiveUrl(currentBaseUrl, !useProxy);
-                updateActiveTab({ url: effectiveUrl, isLoading: true });
-              }}
-              className={`flex items-center space-x-1.5 px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors ${useProxy ? 'bg-indigo-500 text-white' : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'}`}
-            >
-              <Globe className="w-3 h-3" />
-              <span>Proxy Mode: {useProxy ? 'ON' : 'OFF'}</span>
-            </button>
-            <button 
-              onClick={() => {
-                setShowBookmarks(!showBookmarks);
-                setShowSettings(false);
-              }}
-              className={`flex items-center space-x-1.5 px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors ${showBookmarks ? 'bg-indigo-500 text-white' : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'}`}
-            >
-              <Bookmark className="w-3 h-3" />
-              <span>Bookmarks</span>
-            </button>
-            <button 
-              onClick={() => {
-                setShowSettings(!showSettings);
-                setShowBookmarks(false);
-              }}
-              className={`flex items-center space-x-1.5 px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-colors ${showSettings ? 'bg-indigo-500 text-white' : 'bg-zinc-200 text-zinc-500 hover:bg-zinc-300'}`}
-            >
-              <Settings className="w-3 h-3" />
-              <span>Settings</span>
-            </button>
-            <div className="flex items-center space-x-1 text-[9px] text-zinc-400 font-medium hidden sm:flex">
-              <AlertCircle className="w-3 h-3" />
-              <span>Some sites may block iframes. Use Proxy or Open in New Tab.</span>
-            </div>
-          </div>
-          <div className="text-[9px] font-mono text-zinc-400">
-            {activeTab.historyIndex + 1} / {activeTab.history.length}
-          </div>
-
-          {/* Bookmarks Dropdown */}
-          <AnimatePresence>
-            {showBookmarks && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full left-2 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-zinc-200 overflow-hidden z-50"
-              >
-                <div className="p-3 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-                  <h3 className="text-xs font-bold text-zinc-700 uppercase tracking-wider">Saved Bookmarks</h3>
-                  <button onClick={() => setShowBookmarks(false)} className="text-zinc-400 hover:text-zinc-600">
-                    <X className="w-4 h-4" />
-                  </button>
+              <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className={`w-5 h-5 ${shieldsUp ? 'text-orange-500' : 'text-zinc-400'}`} />
+                  <h3 className="font-bold text-zinc-800">Brave Shields</h3>
                 </div>
-                <div className="max-h-60 overflow-y-auto p-2 space-y-1">
-                  {bookmarks.length === 0 ? (
-                    <div className="text-center py-6 text-zinc-400 text-xs">
-                      No bookmarks yet
-                    </div>
-                  ) : (
-                    bookmarks.map((bookmark, idx) => (
-                      <div key={idx} className="flex items-center justify-between group p-2 hover:bg-zinc-100 rounded-lg transition-colors">
-                        <button 
-                          onClick={() => {
-                            navigateTo(bookmark.url);
-                            setShowBookmarks(false);
-                          }}
-                          className="flex-1 text-left truncate pr-2"
-                        >
-                          <div className="text-sm font-medium text-zinc-700 truncate">{bookmark.title}</div>
-                          <div className="text-[10px] text-zinc-400 truncate">{bookmark.url}</div>
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setBookmarks(bookmarks.filter((_, i) => i !== idx));
-                          }}
-                          className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-md opacity-0 group-hover:opacity-100 transition-all"
-                          title="Remove bookmark"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
+                <button 
+                  onClick={() => setShieldsUp(!shieldsUp)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${shieldsUp ? 'bg-orange-500' : 'bg-zinc-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${shieldsUp ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              <div className="p-4 bg-zinc-50/50">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-zinc-600">Trackers & ads blocked</span>
+                  <span className="font-bold text-zinc-800">{shieldsUp ? trackersBlocked : 0}</span>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-zinc-600">Bandwidth saved</span>
+                  <span className="font-bold text-zinc-800">{shieldsUp ? (trackersBlocked * 0.15).toFixed(1) : 0} MB</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-zinc-600">Time saved</span>
+                  <span className="font-bold text-zinc-800">{shieldsUp ? Math.floor(trackersBlocked * 1.2) : 0}s</span>
+                </div>
+              </div>
+              <div className="p-3 border-t border-zinc-100 bg-white flex justify-between">
+                <button onClick={() => setUseProxy(!useProxy)} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                  {useProxy ? 'Disable Proxy' : 'Enable Proxy'}
+                </button>
+                <button onClick={() => setShowSettings(true)} className="text-xs font-medium text-zinc-600 hover:text-zinc-800">
+                  Advanced Controls
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-          {/* Settings Dropdown */}
-          <AnimatePresence>
-            {showSettings && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full left-2 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-zinc-200 overflow-hidden z-50"
-              >
-                <div className="p-3 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-                  <h3 className="text-xs font-bold text-zinc-700 uppercase tracking-wider">Browser Settings</h3>
-                  <button onClick={() => setShowSettings(false)} className="text-zinc-400 hover:text-zinc-600">
-                    <X className="w-4 h-4" />
-                  </button>
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/20 z-30"
+              onClick={() => setShowSettings(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white rounded-2xl shadow-2xl border border-zinc-200 overflow-hidden z-40"
+            >
+              <div className="p-4 border-b border-zinc-100 flex items-center justify-between">
+                <h3 className="font-bold text-zinc-800">Settings</h3>
+                <button onClick={() => setShowSettings(false)} className="text-zinc-400 hover:text-zinc-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 mb-1">Home Page URL</label>
+                  <input 
+                    type="text" 
+                    value={tempHomeUrl}
+                    onChange={(e) => setTempHomeUrl(e.target.value)}
+                    className="w-full bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                  />
                 </div>
-                <div className="p-4 space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 mb-1">Home Page URL</label>
-                    <input 
-                      type="text" 
-                      value={tempHomeUrl}
-                      onChange={(e) => setTempHomeUrl(e.target.value)}
-                      className="w-full bg-zinc-100 border border-zinc-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                      placeholder="https://..."
-                    />
-                  </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm font-medium text-zinc-700">VPN Secure Browsing</span>
                   <button 
-                    onClick={() => {
-                      let finalUrl = tempHomeUrl.trim();
-                      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
-                        finalUrl = 'https://' + finalUrl;
-                      }
-                      setHomeUrl(finalUrl);
-                      localStorage.setItem('browser_home_url', finalUrl);
-                      setShowSettings(false);
-                    }}
-                    className="w-full bg-indigo-500 hover:bg-indigo-600 text-white rounded-md py-2 text-sm font-medium transition-colors"
+                    onClick={() => setIsVpnConnected(!isVpnConnected)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVpnConnected ? 'bg-green-500' : 'bg-zinc-300'}`}
                   >
-                    Save Settings
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isVpnConnected ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
+                <button 
+                  onClick={() => {
+                    let finalUrl = tempHomeUrl.trim();
+                    if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+                      finalUrl = 'https://' + finalUrl;
+                    }
+                    setHomeUrl(finalUrl);
+                    localStorage.setItem('browser_home_url', finalUrl);
+                    setShowSettings(false);
+                  }}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-3 text-sm font-bold transition-colors"
+                >
+                  Save Settings
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
       
       {/* Browser Content */}
       <div className="flex-1 bg-white relative pb-0">
@@ -562,21 +493,20 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
           <div key={tab.id} className={`w-full h-full absolute inset-0 ${activeTabId === tab.id ? 'z-10' : 'z-0 hidden'}`}>
             {tab.isLoading && activeTabId === tab.id && (
               <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center">
-                <RotateCw className="w-8 h-8 text-indigo-500 animate-spin mb-2" />
-                <p className="text-xs font-medium text-zinc-500">Loading page...</p>
+                <div className="w-12 h-12 border-4 border-zinc-200 border-t-orange-500 rounded-full animate-spin mb-4"></div>
               </div>
             )}
 
             {tab.loadError && !tab.isLoading && activeTabId === tab.id && (
               <div className="absolute inset-0 z-20 bg-white flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-500" />
+                  <ShieldAlert className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-lg font-bold text-zinc-900 mb-2">Page Load Timeout</h3>
+                <h3 className="text-lg font-bold text-zinc-900 mb-2">Site can't be reached</h3>
                 <p className="text-sm text-zinc-500 mb-6 max-w-xs">
-                  This website might be blocking the connection or taking too long to respond.
+                  The connection was reset or the site is blocking iframe embedding.
                 </p>
-                <div className="flex flex-col w-full max-w-xs space-y-2">
+                <div className="flex flex-col w-full max-w-xs space-y-3">
                   <button 
                     onClick={() => {
                       updateTab(tab.id, { isLoading: true, loadError: false });
@@ -584,16 +514,9 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
                       updateTab(tab.id, { url: null });
                       setTimeout(() => updateTab(tab.id, { url: currentUrl }), 10);
                     }}
-                    className="w-full py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-colors"
+                    className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-colors"
                   >
-                    Retry Loading
-                  </button>
-                  <button 
-                    onClick={openExternal}
-                    className="w-full py-3 bg-zinc-100 text-zinc-700 rounded-xl font-bold hover:bg-zinc-200 transition-colors flex items-center justify-center space-x-2"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    <span>Open in New Tab</span>
+                    Reload
                   </button>
                   <button 
                     onClick={() => {
@@ -601,9 +524,16 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
                       const currentBaseUrl = tab.history[tab.historyIndex];
                       navigateTo(currentBaseUrl);
                     }}
-                    className="text-xs text-indigo-500 font-bold hover:underline py-2"
+                    className="w-full py-3 bg-zinc-100 text-zinc-700 rounded-xl font-bold hover:bg-zinc-200 transition-colors"
                   >
-                    {useProxy ? 'Try without Proxy' : 'Try with Proxy Mode'}
+                    {useProxy ? 'Disable Proxy' : 'Enable Proxy Mode'}
+                  </button>
+                  <button 
+                    onClick={openExternal}
+                    className="text-sm text-orange-600 font-bold hover:underline py-2 flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open in external app
                   </button>
                 </div>
               </div>
@@ -613,7 +543,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
               <iframe 
                 src={tab.url || undefined} 
                 loading={activeTabId === tab.id ? "eager" : "lazy"}
-                className="w-full h-full border-none"
+                className="w-full h-full border-none bg-white"
                 title={`Browser View ${tab.id}`}
                 onLoad={() => updateTab(tab.id, { isLoading: false, loadError: false })}
                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
@@ -623,11 +553,11 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
                 <Globe className="w-16 h-16 text-zinc-300 mb-4" />
                 <h3 className="text-xl font-bold text-zinc-700 mb-2">Tab Suspended</h3>
                 <p className="text-sm text-zinc-500 mb-6 max-w-sm">
-                  This tab was suspended to save memory and improve performance because it was inactive for a while.
+                  This tab was suspended to save memory.
                 </p>
                 <button 
                   onClick={() => updateTab(tab.id, { isSuspended: false, lastAccessed: Date.now(), isLoading: true })} 
-                  className="px-6 py-3 bg-indigo-500 text-white font-bold rounded-xl hover:bg-indigo-600 transition-colors shadow-sm"
+                  className="px-6 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors"
                 >
                   Reload Tab
                 </button>
@@ -636,6 +566,118 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
           </div>
         ))}
       </div>
+
+      {/* Bottom Bar (Brave Style) */}
+      <div className="bg-white border-t border-zinc-200 px-4 py-2 flex items-center justify-between pb-safe z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+        <button 
+          onClick={goBack} 
+          disabled={activeTab.historyIndex === 0} 
+          className="p-3 text-zinc-700 disabled:text-zinc-300 hover:bg-zinc-100 rounded-full transition-colors"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        <button 
+          onClick={goForward} 
+          disabled={activeTab.historyIndex === activeTab.history.length - 1} 
+          className="p-3 text-zinc-700 disabled:text-zinc-300 hover:bg-zinc-100 rounded-full transition-colors"
+        >
+          <ArrowRight className="w-6 h-6" />
+        </button>
+        <button 
+          onClick={() => navigateTo(homeUrl)} 
+          className="p-3 text-zinc-700 hover:bg-zinc-100 rounded-full transition-colors"
+        >
+          <Search className="w-6 h-6" />
+        </button>
+        <button 
+          onClick={() => setShowTabSwitcher(true)} 
+          className="p-3 text-zinc-700 hover:bg-zinc-100 rounded-full transition-colors relative"
+        >
+          <div className="w-6 h-6 border-2 border-zinc-700 rounded-[6px] flex items-center justify-center text-[11px] font-bold">
+            {tabs.length}
+          </div>
+        </button>
+        <button 
+          onClick={() => setShowBookmarks(!showBookmarks)}
+          className="p-3 text-zinc-700 hover:bg-zinc-100 rounded-full transition-colors"
+        >
+          <MoreVertical className="w-6 h-6" />
+        </button>
+      </div>
+
+      {/* Bookmarks/Menu Bottom Sheet */}
+      <AnimatePresence>
+        {showBookmarks && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/40 z-30"
+              onClick={() => setShowBookmarks(false)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-40 max-h-[80vh] flex flex-col pb-safe"
+            >
+              <div className="flex justify-center p-3">
+                <div className="w-12 h-1.5 bg-zinc-300 rounded-full"></div>
+              </div>
+              <div className="px-6 pb-4 border-b border-zinc-100 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-zinc-800">Menu</h2>
+                <div className="flex gap-2">
+                  <button onClick={toggleBookmark} className="p-2 bg-zinc-100 rounded-full text-zinc-700">
+                    <Star className={`w-5 h-5 ${isBookmarked ? 'fill-orange-500 text-orange-500' : ''}`} />
+                  </button>
+                  <button onClick={() => { setShowBookmarks(false); setShowSettings(true); }} className="p-2 bg-zinc-100 rounded-full text-zinc-700">
+                    <Settings className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 px-2">Bookmarks</h3>
+                <div className="space-y-1">
+                  {bookmarks.length === 0 ? (
+                    <div className="text-center py-8 text-zinc-400 text-sm">
+                      No bookmarks yet
+                    </div>
+                  ) : (
+                    bookmarks.map((bookmark, idx) => (
+                      <div key={idx} className="flex items-center justify-between group p-3 hover:bg-zinc-100 rounded-2xl transition-colors">
+                        <button 
+                          onClick={() => {
+                            navigateTo(bookmark.url);
+                            setShowBookmarks(false);
+                          }}
+                          className="flex-1 flex items-center gap-3 text-left truncate pr-2"
+                        >
+                          <div className="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center shrink-0">
+                            <Bookmark className="w-5 h-5 text-zinc-500" />
+                          </div>
+                          <div className="truncate">
+                            <div className="text-sm font-bold text-zinc-800 truncate">{bookmark.title}</div>
+                            <div className="text-xs text-zinc-500 truncate">{bookmark.url}</div>
+                          </div>
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setBookmarks(bookmarks.filter((_, i) => i !== idx));
+                          }}
+                          className="p-2 text-zinc-400 hover:text-red-500 bg-white shadow-sm rounded-full transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

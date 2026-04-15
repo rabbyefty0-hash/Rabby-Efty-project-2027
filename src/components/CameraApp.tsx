@@ -16,10 +16,29 @@ export default function CameraApp({ onClose }: CameraAppProps) {
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
   const [mode, setMode] = useState<'photo' | 'video'>('photo');
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRecording) {
+      interval = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      setRecordingTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   // Chat State
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -163,22 +182,37 @@ export default function CameraApp({ onClose }: CameraAppProps) {
   const startRecording = () => {
     if (stream) {
       chunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+      let mediaRecorder: MediaRecorder;
+      
+      if (MediaRecorder.isTypeSupported(options.mimeType)) {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } else if (MediaRecorder.isTypeSupported('video/webm')) {
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/mp4' });
+      } else {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           chunksRef.current.push(e.data);
         }
       };
       mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        const mimeType = mediaRecorder.mimeType || 'video/webm';
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const blob = new Blob(chunksRef.current, { type: mimeType });
         try {
           const newNode: VFSNode = {
             id: generateId(),
-            name: `video-${Date.now()}.webm`,
+            name: `video-${Date.now()}.${ext}`,
             type: 'file',
             parentId: null,
             data: blob,
-            mimeType: 'video/webm',
+            mimeType: mimeType,
             size: blob.size,
             createdAt: Date.now(),
             modifiedAt: Date.now()
@@ -190,7 +224,7 @@ export default function CameraApp({ onClose }: CameraAppProps) {
           alert("Failed to save video");
         }
       };
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // Collect data every second
       mediaRecorderRef.current = mediaRecorder;
       setIsRecording(true);
     }
@@ -426,9 +460,9 @@ export default function CameraApp({ onClose }: CameraAppProps) {
           />
         )}
         {isRecording && (
-          <div className="absolute top-6 right-6 flex items-center space-x-2 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/50 backdrop-blur-md">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-xs font-bold text-red-500 tracking-widest">REC</span>
+          <div className="absolute top-6 right-6 flex items-center space-x-2 bg-red-500/20 px-3 py-1.5 rounded-full border border-red-500/50 backdrop-blur-md">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-xs font-bold text-red-500 tracking-widest">{formatTime(recordingTime)}</span>
           </div>
         )}
       </div>

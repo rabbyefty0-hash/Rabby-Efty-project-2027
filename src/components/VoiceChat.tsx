@@ -407,21 +407,19 @@ export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
             <p className="text-white/60 text-[15px]">Have a real-time conversation with ꧁Rᴀʙʙʏ Eғᴛʏ꧂.</p>
           </div>
 
-          {isCameraEnabled && isConnected && (
-            <div className="relative w-full aspect-video rounded-3xl overflow-hidden border border-white/20 shadow-2xl mb-8">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-3 right-3 flex items-center space-x-1.5 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-white tracking-widest uppercase">Live</span>
-              </div>
+          <div className={isCameraEnabled && isConnected ? "relative w-full aspect-video rounded-3xl overflow-hidden border border-white/20 shadow-2xl mb-8" : "hidden"}>
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              muted 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute top-3 right-3 flex items-center space-x-1.5 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-white tracking-widest uppercase">Live</span>
             </div>
-          )}
+          </div>
 
           <div className="relative flex items-center justify-center py-12">
           {isConnected && !isCameraEnabled && (

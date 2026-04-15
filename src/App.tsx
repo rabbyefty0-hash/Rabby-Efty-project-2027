@@ -731,8 +731,8 @@ function AppContent() {
         </AnimatePresence>
       </div>
 
-      {/* Chatbot (hidden in voice tab and home) */}
-      {activeTab !== 'voice' && activeTab !== 'home' && (
+      {/* Chatbot (hidden in voice tab, home, and browser) */}
+      {activeTab !== 'voice' && activeTab !== 'home' && activeTab !== 'browser' && (
         <Suspense fallback={null}>
           <Chatbot
             messages={chatMessages}
