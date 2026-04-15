@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ChevronLeft, Play, Youtube, AlertCircle, Loader2, X, ThumbsUp, ThumbsDown, Share2, Download, Bookmark, MessageSquare, MoreVertical } from 'lucide-react';
+import { Search, ChevronLeft, Play, Youtube, AlertCircle, Loader2, X, ThumbsUp, ThumbsDown, Share2, Download, Bookmark, MessageSquare, MoreVertical, Cast, Bell, Home, Compass, PlaySquare, MonitorPlay, Mic } from 'lucide-react';
 
 interface YouTubeAppProps {
   onBack: () => void;
 }
 
-interface Video {
-  id: {
-    videoId: string;
-  };
+interface YouTubeVideo {
+  id: { videoId: string } | string;
   snippet: {
     title: string;
     description: string;
     thumbnails: {
-      medium: {
-        url: string;
-      };
-      high: {
-        url: string;
-      };
+      medium: { url: string };
+      high: { url: string };
     };
     channelTitle: string;
     publishedAt: string;
@@ -28,89 +22,158 @@ interface Video {
 
 const CATEGORIES = ['All', 'Music', 'Gaming', 'News', 'Live', 'Technology', 'Podcasts', 'Coding', 'React', 'AI'];
 
+// Fallback mock data when API key is missing or quota exceeded
+const MOCK_VIDEOS: YouTubeVideo[] = [
+  {
+    id: { videoId: 'dQw4w9WgXcQ' },
+    snippet: {
+      title: 'Rick Astley - Never Gonna Give You Up (Official Music Video)',
+      description: 'The official video for “Never Gonna Give You Up” by Rick Astley',
+      thumbnails: {
+        medium: { url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
+        high: { url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg' }
+      },
+      channelTitle: 'Rick Astley',
+      publishedAt: '2009-10-25T06:57:33Z'
+    }
+  },
+  {
+    id: { videoId: 'jNQXAC9IVRw' },
+    snippet: {
+      title: 'Me at the zoo',
+      description: 'The first video ever uploaded to YouTube.',
+      thumbnails: {
+        medium: { url: 'https://i.ytimg.com/vi/jNQXAC9IVRw/mqdefault.jpg' },
+        high: { url: 'https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg' }
+      },
+      channelTitle: 'jawed',
+      publishedAt: '2005-04-24T03:31:52Z'
+    }
+  },
+  {
+    id: { videoId: '9bZkp7q19f0' },
+    snippet: {
+      title: 'PSY - GANGNAM STYLE(강남스타일) M/V',
+      description: 'PSY - GANGNAM STYLE(강남스타일) M/V',
+      thumbnails: {
+        medium: { url: 'https://i.ytimg.com/vi/9bZkp7q19f0/mqdefault.jpg' },
+        high: { url: 'https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg' }
+      },
+      channelTitle: 'officialpsy',
+      publishedAt: '2012-07-15T07:46:32Z'
+    }
+  }
+];
+
 export default function YouTubeApp({ onBack }: YouTubeAppProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [selectedVideo, setSelectedVideo] = useState<YouTubeVideo | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
   const [comments, setComments] = useState<any[]>([]);
-  const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
+  const [relatedVideos, setRelatedVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingExtra, setIsLoadingExtra] = useState(false);
 
   const apiKey = (import.meta as any).env.VITE_YOUTUBE_API_KEY;
 
   useEffect(() => {
-    if (selectedVideo && apiKey) {
+    fetchTrending();
+  }, []);
+
+  useEffect(() => {
+    if (selectedVideo) {
       fetchExtraData(selectedVideo);
     }
   }, [selectedVideo]);
 
-  const fetchExtraData = async (video: Video) => {
-    setIsLoadingExtra(true);
+  const fetchTrending = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const commentsRes = await fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${video.id.videoId}&maxResults=15&key=${apiKey}`);
-      if (commentsRes.ok) {
-        const commentsData = await commentsRes.json();
-        setComments(commentsData.items || []);
+      if (!apiKey) {
+        // Use mock data if no API key
+        setVideos(MOCK_VIDEOS);
+        setIsLoading(false);
+        return;
       }
-      const relatedRes = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(video.snippet.channelTitle)}&type=video&key=${apiKey}`);
-      if (relatedRes.ok) {
-        const relatedData = await relatedRes.json();
-        setRelatedVideos(relatedData.items?.filter((v: any) => v.id?.videoId && v.id.videoId !== video.id.videoId) || []);
-      }
-    } catch (err) {
-      console.error("Failed to fetch extra data", err);
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&q=trending&type=video&key=${apiKey}`);
+      if (!res.ok) throw new Error('Failed to fetch trending videos');
+      const data = await res.json();
+      setVideos(data.items || MOCK_VIDEOS);
+    } catch (err: any) {
+      console.warn('API failed, using fallback data', err);
+      setVideos(MOCK_VIDEOS);
     } finally {
-      setIsLoadingExtra(false);
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    // Load some default videos if API key is present
-    if (apiKey) {
-      searchVideos('technology');
-    } else {
-      setError('YouTube API key is missing. Please add VITE_YOUTUBE_API_KEY to your environment variables to enable search.');
-    }
-  }, []);
-
   const searchVideos = async (query: string) => {
-    if (!apiKey) {
-      setError('YouTube API key is missing. Please add VITE_YOUTUBE_API_KEY to your environment variables.');
-      return;
-    }
-
     if (!query.trim()) return;
-
     setIsLoading(true);
     setError(null);
-
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&q=${encodeURIComponent(
-          query
-        )}&type=video&key=${apiKey}`
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to fetch videos');
+      if (!apiKey) {
+        setVideos(MOCK_VIDEOS);
+        setIsLoading(false);
+        return;
       }
-
-      const data = await response.json();
-      setVideos(data.items || []);
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&q=${encodeURIComponent(query)}&type=video&key=${apiKey}`);
+      if (!res.ok) throw new Error('Failed to search videos');
+      const data = await res.json();
+      setVideos(data.items || MOCK_VIDEOS);
     } catch (err: any) {
-      setError(err.message || 'An error occurred while searching');
+      console.warn('API failed, using fallback data', err);
+      setVideos(MOCK_VIDEOS);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchExtraData = async (video: YouTubeVideo) => {
+    setIsLoadingExtra(true);
+    const videoId = typeof video.id === 'string' ? video.id : video.id.videoId;
+    try {
+      if (!apiKey) {
+        setRelatedVideos(MOCK_VIDEOS);
+        setComments([]);
+        setIsLoadingExtra(false);
+        return;
+      }
+      const [relatedRes, commentsRes] = await Promise.all([
+        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&relatedToVideoId=${videoId}&type=video&key=${apiKey}`).catch(() => null),
+        fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=10&key=${apiKey}`).catch(() => null)
+      ]);
+
+      if (relatedRes && relatedRes.ok) {
+        const data = await relatedRes.json();
+        setRelatedVideos(data.items || MOCK_VIDEOS);
+      } else {
+        setRelatedVideos(MOCK_VIDEOS);
+      }
+      if (commentsRes && commentsRes.ok) {
+        const data = await commentsRes.json();
+        setComments(data.items || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch extra data", err);
+      setRelatedVideos(MOCK_VIDEOS);
+    } finally {
+      setIsLoadingExtra(false);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     searchVideos(searchQuery);
+    setIsSearchMode(false);
+  };
+
+  const getVideoId = (video: YouTubeVideo) => {
+    return typeof video.id === 'string' ? video.id : video.id.videoId;
   };
 
   const renderList = () => (
@@ -119,160 +182,157 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       className="flex flex-col h-full bg-[#0f0f0f] text-white"
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.2}
-      onDragEnd={(e, info) => {
-        if (info.offset.x > 50 || info.velocity.x > 500) {
-          onBack();
-        }
-      }}
     >
-      <div className="pt-12 pb-4 px-4 flex items-center justify-between bg-[#0f0f0f] z-10 sticky top-0">
-        <div className="flex items-center gap-2">
-          <button onClick={onBack} className="p-2 -ml-2 text-white rounded-full hover:bg-white/10">
+      {/* Top Bar */}
+      {!isSearchMode ? (
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0f0f0f] sticky top-0 z-20">
+          <div className="flex items-center gap-1 cursor-pointer" onClick={onBack}>
+            <ChevronLeft className="w-6 h-6 mr-1" />
+            <Youtube className="w-8 h-8 text-red-600" />
+            <span className="text-xl font-bold tracking-tighter text-white">YouTube</span>
+          </div>
+          <div className="flex items-center gap-5 text-white">
+            <Cast className="w-5 h-5" />
+            <Bell className="w-5 h-5" />
+            <Search className="w-5 h-5 cursor-pointer" onClick={() => setIsSearchMode(true)} />
+            <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold">R</div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 px-4 py-2 bg-[#0f0f0f] sticky top-0 z-20">
+          <button onClick={() => setIsSearchMode(false)} className="p-2 -ml-2 text-white rounded-full hover:bg-white/10">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <Youtube className="w-8 h-8 text-red-600" />
-          <span className="text-xl font-bold tracking-tighter">YouTube</span>
+          <form onSubmit={handleSearch} className="flex-1 relative">
+            <input 
+              type="text" 
+              placeholder="Search YouTube" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+              className="w-full bg-[#272727] text-white rounded-full py-2 pl-4 pr-10 focus:outline-none"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-0 bottom-0 flex items-center justify-center text-gray-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </form>
+          <button className="p-2 bg-[#272727] rounded-full">
+            <Mic className="w-5 h-5" />
+          </button>
         </div>
-      </div>
+      )}
 
-      <div className="px-4 pb-4 sticky top-[72px] bg-[#0f0f0f] z-10">
-        <form onSubmit={handleSearch} className="relative">
-          <input 
-            type="text" 
-            placeholder="Search YouTube" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#272727] text-white rounded-full py-2 pl-4 pr-20 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
-          {searchQuery && (
+      {/* Categories */}
+      {!isSearchMode && (
+        <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-3 px-4 py-2 sticky top-[60px] bg-[#0f0f0f] z-10 border-b border-white/10">
+          <button className="p-1.5 bg-[#272727] rounded-md shrink-0"><Compass className="w-5 h-5" /></button>
+          <div className="w-[1px] h-6 bg-white/20 self-center mx-1 shrink-0" />
+          {CATEGORIES.map(cat => (
             <button
-              type="button"
+              key={cat}
               onClick={() => {
-                setSearchQuery('');
-                setActiveCategory('All');
-                searchVideos('technology'); // Reset to default
+                setActiveCategory(cat);
+                if (cat === 'All') fetchTrending();
+                else searchVideos(cat);
               }}
-              className="absolute right-14 top-0 bottom-0 px-2 flex items-center justify-center text-gray-400 hover:text-white"
+              className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeCategory === cat ? 'bg-white text-black' : 'bg-[#272727] text-white hover:bg-[#3f3f3f]'}`}
             >
-              <X className="w-4 h-4" />
+              {cat}
             </button>
-          )}
-          <button 
-            type="submit"
-            className="absolute right-0 top-0 bottom-0 px-4 bg-[#222222] rounded-r-full border-l border-[#303030] hover:bg-[#303030] transition-colors flex items-center justify-center"
-          >
-            <Search className="w-5 h-5 text-gray-400" />
-          </button>
-        </form>
-      </div>
+          ))}
+        </div>
+      )}
 
-      <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-2 px-4 pb-3 sticky top-[124px] bg-[#0f0f0f] z-10">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => {
-              setActiveCategory(cat);
-              setSearchQuery(cat === 'All' ? '' : cat);
-              searchVideos(cat === 'All' ? 'technology' : cat);
-            }}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeCategory === cat ? 'bg-white text-black' : 'bg-[#272727] text-white hover:bg-[#3f3f3f]'}`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 overflow-y-auto pb-8">
-        {error && !videos.length && (
-          <div className="p-6 flex flex-col items-center text-center text-gray-400 mt-10">
-            <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-            <p>{error}</p>
+      {/* Video List */}
+      <div className="flex-1 overflow-y-auto pb-16">
+        {!apiKey && !isLoading && (
+          <div className="bg-blue-900/40 text-blue-200 p-3 text-xs text-center border-b border-blue-500/30">
+            Using mock data. Add VITE_YOUTUBE_API_KEY to .env for real results.
           </div>
         )}
-
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <Loader2 className="w-8 h-8 animate-spin text-red-600" />
           </div>
+        ) : error ? (
+          <div className="p-6 flex flex-col items-center text-center text-gray-400 mt-10">
+            <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+            <p>{error}</p>
+            <button onClick={fetchTrending} className="mt-4 px-4 py-2 bg-white/10 rounded-full text-white">Retry</button>
+          </div>
         ) : (
-          <div className="flex flex-col gap-4">
-            {videos.map((video) => (
+          <div className="flex flex-col gap-1 sm:gap-4 sm:p-4">
+            {videos.map((video, idx) => (
               <div 
-                key={video.id.videoId} 
-                className="cursor-pointer group"
+                key={idx} 
+                className="cursor-pointer group flex flex-col sm:rounded-xl overflow-hidden bg-[#0f0f0f] sm:bg-[#181818]"
                 onClick={() => setSelectedVideo(video)}
               >
                 <div className="relative aspect-video w-full overflow-hidden bg-[#272727]">
                   <img 
-                    src={video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url} 
+                    src={video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.medium?.url} 
                     alt={video.snippet.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Play className="w-12 h-12 text-white drop-shadow-lg" fill="currentColor" />
-                  </div>
                 </div>
                 <div className="p-3 flex gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-purple-600 flex-shrink-0 flex items-center justify-center text-white font-bold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-purple-600 flex items-center justify-center text-white font-bold shrink-0">
                     {video.snippet.channelTitle.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex flex-col">
-                    <h3 className="text-sm font-medium line-clamp-2 leading-tight mb-1" dangerouslySetInnerHTML={{ __html: video.snippet.title }} />
-                    <span className="text-xs text-gray-400">{video.snippet.channelTitle}</span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(video.snippet.publishedAt).toLocaleDateString()}
-                    </span>
+                  <div className="flex flex-col pr-6 relative w-full">
+                    <h3 className="text-sm font-medium line-clamp-2 leading-tight mb-1 text-white" dangerouslySetInnerHTML={{ __html: video.snippet.title }} />
+                    <div className="text-xs text-gray-400 flex items-center flex-wrap gap-1">
+                      <span>{video.snippet.channelTitle}</span>
+                      <span className="text-[10px]">•</span>
+                      <span>{new Date(video.snippet.publishedAt).toLocaleDateString()}</span>
+                    </div>
+                    <MoreVertical className="w-4 h-4 text-white/50 absolute right-0 top-0" />
                   </div>
                 </div>
               </div>
             ))}
-            
-            {!isLoading && !error && videos.length === 0 && searchQuery && (
-              <div className="text-center text-gray-500 mt-10">
-                No results found for "{searchQuery}"
-              </div>
-            )}
           </div>
         )}
+      </div>
+
+      {/* Bottom Nav */}
+      <div className="flex items-center justify-between px-6 py-2 bg-[#0f0f0f] border-t border-white/10 sticky bottom-0 z-20 pb-safe">
+        <div className="flex flex-col items-center text-white"><Home className="w-6 h-6" /><span className="text-[10px] mt-1">Home</span></div>
+        <div className="flex flex-col items-center text-white/50"><PlaySquare className="w-6 h-6" /><span className="text-[10px] mt-1">Shorts</span></div>
+        <div className="flex flex-col items-center text-white/50"><MonitorPlay className="w-6 h-6" /><span className="text-[10px] mt-1">Subscriptions</span></div>
+        <div className="flex flex-col items-center text-white/50"><Bookmark className="w-6 h-6" /><span className="text-[10px] mt-1">Library</span></div>
       </div>
     </motion.div>
   );
 
   const renderPlayer = () => {
     if (!selectedVideo) return null;
+    const videoId = getVideoId(selectedVideo);
     
     return (
       <motion.div 
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 50 }}
-        className="flex flex-col h-full bg-[#0f0f0f] text-white z-20 absolute inset-0"
-        drag="y"
-        dragConstraints={{ top: 0, bottom: 0 }}
-        dragElastic={{ top: 0, bottom: 0.2 }}
-        onDragEnd={(e, info) => {
-          if (info.offset.y > 100 || info.velocity.y > 500) {
-            setSelectedVideo(null);
-          }
-        }}
+        className="flex flex-col h-full bg-[#0f0f0f] text-white z-30 absolute inset-0"
       >
-        <div className="pt-12 pb-2 px-2 flex items-center bg-black">
+        <div className="w-full aspect-video bg-black sticky top-0 z-40 relative group shrink-0">
           <button 
             onClick={() => setSelectedVideo(null)} 
-            className="p-2 text-white rounded-full hover:bg-white/10"
+            className="absolute top-4 left-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
-        </div>
-
-        <div className="w-full aspect-video bg-black sticky top-[60px] z-30">
           <iframe
             width="100%"
             height="100%"
-            src={`https://www.youtube.com/embed/${selectedVideo.id.videoId}?autoplay=1`}
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1`}
             title={selectedVideo.snippet.title}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -281,107 +341,87 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
           ></iframe>
         </div>
 
-        <div id="player-scroll-container" className="flex-1 overflow-y-auto p-4">
-          <h1 className="text-xl font-bold mb-2" dangerouslySetInnerHTML={{ __html: selectedVideo.snippet.title }} />
-          
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#272727]">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-purple-600 flex items-center justify-center text-white font-bold">
-              {selectedVideo.snippet.channelTitle.charAt(0).toUpperCase()}
+        <div id="player-scroll-container" className="flex-1 overflow-y-auto">
+          <div className="p-4">
+            <h1 className="text-lg font-bold mb-2 leading-tight" dangerouslySetInnerHTML={{ __html: selectedVideo.snippet.title }} />
+            <div className="flex items-center text-xs text-gray-400 mb-4">
+              <span>{new Date(selectedVideo.snippet.publishedAt).toLocaleDateString()}</span>
             </div>
-            <div className="flex flex-col">
-              <span className="font-medium">{selectedVideo.snippet.channelTitle}</span>
-              <span className="text-xs text-gray-400">1.2M subscribers</span>
+
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-purple-600 flex items-center justify-center text-white font-bold shrink-0">
+                  {selectedVideo.snippet.channelTitle.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm">{selectedVideo.snippet.channelTitle}</span>
+                  <span className="text-xs text-gray-400">1.2M subscribers</span>
+                </div>
+              </div>
+              <button className="bg-white text-black px-4 py-2 rounded-full font-bold text-sm hover:bg-gray-200 transition-colors">
+                Subscribe
+              </button>
             </div>
-            <button className="ml-auto bg-white text-black px-4 py-1.5 rounded-full font-medium text-sm hover:bg-gray-200 transition-colors">
-              Subscribe
-            </button>
-          </div>
 
-          <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-2 mb-4 pb-2">
-            <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
-              <ThumbsUp className="w-4 h-4" /> <span>Like</span>
-              <div className="w-[1px] h-4 bg-white/20 mx-1" />
-              <ThumbsDown className="w-4 h-4" />
-            </button>
-            <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
-              <Share2 className="w-4 h-4" /> <span>Share</span>
-            </button>
-            <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
-              <Download className="w-4 h-4" /> <span>Download</span>
-            </button>
-            <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
-              <Bookmark className="w-4 h-4" /> <span>Save</span>
-            </button>
-          </div>
+            <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-2 mb-6 pb-2">
+              <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
+                <ThumbsUp className="w-4 h-4" /> <span>Like</span>
+                <div className="w-[1px] h-4 bg-white/20 mx-1" />
+                <ThumbsDown className="w-4 h-4" />
+              </button>
+              <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
+                <Share2 className="w-4 h-4" /> <span>Share</span>
+              </button>
+              <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
+                <Download className="w-4 h-4" /> <span>Download</span>
+              </button>
+              <button className="flex items-center gap-2 bg-[#272727] hover:bg-[#3f3f3f] px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap">
+                <Bookmark className="w-4 h-4" /> <span>Save</span>
+              </button>
+            </div>
 
-          <div className="bg-[#272727] rounded-xl p-3 text-sm mb-6">
-            <p className="font-medium mb-2">
-              Published on {new Date(selectedVideo.snippet.publishedAt).toLocaleDateString()}
-            </p>
-            <p className="whitespace-pre-wrap text-gray-300" dangerouslySetInnerHTML={{ __html: selectedVideo.snippet.description }} />
-          </div>
+            {/* Comments Preview */}
+            <div className="bg-[#272727] rounded-xl p-3 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-sm">Comments</span>
+              </div>
+              {isLoadingExtra ? (
+                <div className="flex justify-center py-2"><Loader2 className="w-4 h-4 animate-spin text-gray-500" /></div>
+              ) : comments.length > 0 ? (
+                <div className="flex gap-2 items-start">
+                  <img src={comments[0].snippet.topLevelComment.snippet.authorProfileImageUrl} className="w-6 h-6 rounded-full shrink-0" />
+                  <p className="text-xs text-gray-200 line-clamp-2 flex-1" dangerouslySetInnerHTML={{ __html: comments[0].snippet.topLevelComment.snippet.textDisplay }} />
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">No comments available.</p>
+              )}
+            </div>
 
-          {/* Related Videos */}
-          <div className="mb-8">
-            <h3 className="text-lg font-bold mb-4">Related Videos</h3>
-            {isLoadingExtra ? (
-              <div className="flex justify-center py-4"><Loader2 className="w-6 h-6 animate-spin text-gray-500" /></div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {relatedVideos.map((video) => (
-                  <div key={video.id.videoId} className="flex gap-3 cursor-pointer group" onClick={() => {
+            {/* Related Videos */}
+            <div className="flex flex-col gap-3">
+              {isLoadingExtra ? (
+                <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 animate-spin text-gray-500" /></div>
+              ) : (
+                relatedVideos.map((video, idx) => (
+                  <div key={idx} className="flex gap-2 cursor-pointer group" onClick={() => {
                     setSelectedVideo(video);
                     const playerContainer = document.getElementById('player-scroll-container');
                     if (playerContainer) playerContainer.scrollTop = 0;
                   }}>
                     <div className="relative w-40 aspect-video rounded-xl overflow-hidden bg-[#272727] flex-shrink-0">
-                      <img src={video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.high?.url} alt={video.snippet.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <img src={video.snippet.thumbnails?.medium?.url || video.snippet.thumbnails?.high?.url} alt={video.snippet.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     </div>
-                    <div className="flex flex-col py-1">
-                      <h4 className="text-sm font-medium line-clamp-2 leading-tight" dangerouslySetInnerHTML={{ __html: video.snippet.title }} />
+                    <div className="flex flex-col py-0.5 pr-2">
+                      <h4 className="text-sm font-medium line-clamp-2 leading-tight text-white" dangerouslySetInnerHTML={{ __html: video.snippet.title }} />
                       <span className="text-xs text-gray-400 mt-1">{video.snippet.channelTitle}</span>
-                      <span className="text-xs text-gray-400">{new Date(video.snippet.publishedAt).toLocaleDateString()}</span>
+                      <div className="text-xs text-gray-400 flex items-center flex-wrap gap-1">
+                        <span>{new Date(video.snippet.publishedAt).toLocaleDateString()}</span>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Comments Section */}
-          <div className="border-t border-[#272727] pt-6">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" /> Comments
-            </h3>
-            {isLoadingExtra ? (
-              <div className="flex justify-center py-4"><Loader2 className="w-6 h-6 animate-spin text-gray-500" /></div>
-            ) : comments.length > 0 ? (
-              <div className="flex flex-col gap-6">
-                {comments.map((comment: any) => {
-                  const snippet = comment.snippet.topLevelComment.snippet;
-                  return (
-                    <div key={comment.id} className="flex gap-3">
-                      <img src={snippet.authorProfileImageUrl} alt={snippet.authorDisplayName} className="w-10 h-10 rounded-full bg-[#272727]" />
-                      <div className="flex flex-col flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-300">@{snippet.authorDisplayName}</span>
-                          <span className="text-xs text-gray-500">{new Date(snippet.publishedAt).toLocaleDateString()}</span>
-                        </div>
-                        <p className="text-sm mt-1 text-gray-200" dangerouslySetInnerHTML={{ __html: snippet.textDisplay }} />
-                        <div className="flex items-center gap-4 mt-2 text-gray-400">
-                          <button className="flex items-center gap-1 hover:text-white transition-colors"><ThumbsUp className="w-3 h-3" /> <span className="text-xs">{snippet.likeCount > 0 ? snippet.likeCount : ''}</span></button>
-                          <button className="hover:text-white transition-colors"><ThumbsDown className="w-3 h-3" /></button>
-                          <button className="hover:text-white transition-colors"><MessageSquare className="w-3 h-3" /></button>
-                        </div>
-                      </div>
-                      <button className="text-gray-500 hover:text-white self-start"><MoreVertical className="w-4 h-4" /></button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-sm">No comments available.</p>
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
       </motion.div>

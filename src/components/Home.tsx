@@ -2,6 +2,7 @@ import React, { useState, useEffect, memo } from 'react';
 import { Sparkles, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock, Images } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../ThemeContext';
+import { APPS } from '../App';
 
 interface HomeProps {
   onNavigate: (tab: any) => void;
@@ -46,6 +47,33 @@ const ClockWidget = memo(() => {
         <div className="flex items-center gap-2 mt-2 bg-white/10 px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
            <Sparkles className="w-3 h-3 text-rose-300" />
            <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-white/90">{getGreeting()}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const ArenaAiWidget = memo(({ onNavigate }: { onNavigate: (tab: any) => void }) => {
+  return (
+    <div 
+      onClick={() => onNavigate('arena-ai')}
+      className="w-full h-full min-h-[7rem] bg-gradient-to-br from-orange-500/80 to-rose-600/80 rounded-[1.8rem] backdrop-blur-[50px] border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.4),inset_0_1px_2px_rgba(255,255,255,0.3)] overflow-hidden relative cursor-pointer group hover:scale-[1.02] transition-transform duration-300"
+    >
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 mix-blend-overlay" />
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-400/30 rounded-full blur-2xl group-hover:bg-yellow-400/50 transition-colors duration-500" />
+      
+      <div className="absolute inset-0 p-4 flex flex-col justify-between z-10">
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2 bg-black/20 px-2.5 py-1 rounded-full backdrop-blur-md border border-white/10">
+            <Swords className="w-3.5 h-3.5 text-yellow-300" />
+            <span className="text-[10px] font-bold tracking-widest uppercase text-white">Arena AI</span>
+          </div>
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]" />
+        </div>
+        
+        <div>
+          <h2 className="text-white font-bold text-lg leading-tight mb-0.5 drop-shadow-md">Battle Models</h2>
+          <p className="text-white/80 text-xs font-medium drop-shadow-sm">Compare AI models side-by-side</p>
         </div>
       </div>
     </div>
@@ -182,7 +210,10 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <ClockWidget />
-          <SmartStackWidget onNavigate={onNavigate} />
+          <div className="flex flex-col gap-6">
+            <SmartStackWidget onNavigate={onNavigate} />
+            <ArenaAiWidget onNavigate={onNavigate} />
+          </div>
         </div>
 
         {/* Recently Used Apps Carousel */}
@@ -213,26 +244,24 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
           </div>
         )}
 
-        {/* Quick Actions - Compact */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <button onClick={() => onNavigate('voice')} className="bg-gradient-to-br from-rose-500/20 to-orange-500/20 rounded-[1.8rem] p-4 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all relative group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-            <div className="relative">
-              <div className="absolute inset-0 bg-rose-500/40 rounded-full blur-md animate-pulse" />
-              <Mic className="w-7 h-7 text-rose-300 drop-shadow-md relative z-10" />
-            </div>
-            <span className="text-white/90 font-medium text-xs relative z-10 drop-shadow-sm">Gemini Voice</span>
-          </button>
-          <button onClick={() => onNavigate('gallery')} className="bg-black/20 dark:bg-black/40 rounded-[1.8rem] p-4 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all relative group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-            <Images className="w-7 h-7 text-purple-400 drop-shadow-md relative z-10" />
-            <span className="text-white/90 font-medium text-xs relative z-10 drop-shadow-sm">Photos</span>
-          </button>
-          <button onClick={() => onNavigate('file-manager')} className="bg-black/20 dark:bg-black/40 rounded-[1.8rem] p-4 backdrop-blur-[50px] border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.3),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all relative group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-            <Folder className="w-7 h-7 text-blue-400 drop-shadow-md relative z-10" />
-            <span className="text-white/90 font-medium text-xs relative z-10 drop-shadow-sm">Files</span>
-          </button>
+        {/* Home Screen Apps Grid */}
+        <div className="grid grid-cols-4 gap-y-6 gap-x-4 mb-8 mt-4 px-2">
+          {APPS.filter(app => ['camera', 'gallery', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 'settings', 'calculator', 'weather', 'calendar', 'clock', 'music', 'maps', 'contacts', 'downloader'].includes(app.id)).map((app, index) => (
+            <motion.button
+              key={app.id}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
+              onClick={() => onNavigate(app.id)}
+              className="flex flex-col items-center space-y-1.5 group"
+            >
+              <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
+                <app.icon className={`w-6 h-6 sm:w-7 sm:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
+              </div>
+              <span className="text-[11px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
+            </motion.button>
+          ))}
         </div>
 
       </div>

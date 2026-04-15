@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { VFSNode, getNodesByParent, addNode, deleteNode, renameNode, generateId, getNode, getAllFiles, verifyPermission } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
+import { VideoPlayer } from './VideoPlayer';
 
 interface FileManagerProps {
   onBack?: () => void;
@@ -813,7 +814,9 @@ export function FileManager({ onBack }: FileManagerProps) {
               )}
               
               {previewNode.mimeType?.startsWith('video/') && (
-                <video src={previewUrl} controls autoPlay className="max-w-full max-h-full rounded-lg shadow-2xl" />
+                <div className="w-full max-w-4xl max-h-full flex items-center justify-center">
+                  <VideoPlayer src={previewUrl} autoPlay className="w-full h-full max-h-[80vh]" />
+                </div>
               )}
 
               {previewNode.mimeType?.startsWith('audio/') && (

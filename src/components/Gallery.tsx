@@ -4,6 +4,7 @@ import { ChevronLeft, Share, Trash2, Heart, Play, Sparkles, Image as ImageIcon }
 import { VFSNode, getAllFiles, getNode, deleteNode } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
 import { GoogleGenAI } from '@google/genai';
+import { VideoPlayer } from './VideoPlayer';
 
 interface GalleryProps {
   onBack?: () => void;
@@ -218,7 +219,9 @@ export function Gallery({ onBack }: GalleryProps) {
                 <img src={previewUrl} alt={previewNode.name} className="max-w-full max-h-full object-contain pointer-events-none" />
               )}
               {previewNode.mimeType?.startsWith('video/') && (
-                <video src={previewUrl} controls autoPlay className="max-w-full max-h-full" />
+                <div className="w-full max-w-4xl max-h-full flex items-center justify-center">
+                  <VideoPlayer src={previewUrl} autoPlay className="w-full h-full max-h-[80vh]" />
+                </div>
               )}
               
               {/* AI Description Overlay */}

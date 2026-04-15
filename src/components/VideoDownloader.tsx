@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Download, Link as LinkIcon, Film, Loader2, CheckCircle2, AlertCircle, PlayCircle, Music, ShieldCheck } from 'lucide-react';
+import { Download, Link as LinkIcon, Film, Loader2, CheckCircle2, AlertCircle, PlayCircle, Music, ShieldCheck, HardDrive } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { addNode, generateId } from '../lib/vfs';
 
 interface VideoDownloaderProps {
   isVpnConnected?: boolean;
@@ -12,6 +13,7 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState('');
+  const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,46 +35,20 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
       else if (lowerUrl.includes('dailymotion.com')) source = 'Dailymotion';
       else if (lowerUrl.includes('soundcloud.com')) source = 'SoundCloud';
 
-      // Use a public API for video downloading (Cobalt API)
-      const response = await fetch('https://api.cobalt.tools/api/json', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          url: url.trim(),
-          vQuality: '1080',
-          filenamePattern: 'classic'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze video. Please check the URL or try again later.');
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'error') {
-        throw new Error(data.text || 'Error analyzing video.');
-      }
-
-      let formats = [];
+      // We don't fetch the actual download link until the user selects the format,
+      // because Cobalt API generates the link on the fly and it might expire.
+      // We just show the available options for the detected platform.
+      
       let thumbnail = "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&q=80";
 
-      if (data.status === 'redirect' || data.status === 'stream') {
-        formats.push({ quality: 'Best Quality', size: 'Unknown', type: 'MP4', url: data.url, icon: <Film className="w-4 h-4" /> });
-        // Add an audio option just in case
-        formats.push({ quality: 'Audio Only', size: 'Unknown', type: 'MP3', url: data.url, icon: <Music className="w-4 h-4" /> });
-      } else if (data.status === 'picker') {
-        thumbnail = data.picker[0]?.thumb || thumbnail;
-        data.picker.forEach((item: any, index: number) => {
-          formats.push({ quality: `Item ${index + 1}`, size: 'Unknown', type: item.type === 'video' ? 'MP4' : 'Image', url: item.url, icon: item.type === 'video' ? <Film className="w-4 h-4" /> : <Download className="w-4 h-4" /> });
-        });
-      }
+      const formats = [
+        { id: 'mp4-max', quality: 'Max Quality (1080p+)', size: 'Auto', type: 'MP4', icon: <Film className="w-4 h-4" />, isAudio: false },
+        { id: 'mp4-720', quality: 'Standard Quality (720p)', size: 'Auto', type: 'MP4', icon: <Film className="w-4 h-4" />, isAudio: false },
+        { id: 'mp3-320', quality: 'High Quality Audio (320kbps)', size: 'Auto', type: 'MP3', icon: <Music className="w-4 h-4" />, isAudio: true }
+      ];
 
       setResult({
-        title: `Extracted Content from ${source}`,
+        title: `Ready to download from ${source}`,
         thumbnail: thumbnail,
         duration: "Ready",
         source: source,
@@ -85,11 +61,105 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
     }
   };
 
-  const handleDownload = (format: any) => {
-    if (format.url) {
-      window.open(format.url, '_blank');
-    } else {
-      alert(`Started downloading: ${format.quality} ${format.type}`);
+  const handleDownload = async (format: any) => {
+    setDownloadingFormat(format.id);
+    setError('');
+
+    try {
+      const payload: any = {
+        url: url.trim(),
+        filenamePattern: 'classic'
+      };
+
+      if (format.isAudio) {
+        payload.isAudioOnly = true;
+        payload.aFormat = 'mp3';
+      } else {
+        payload.vQuality = format.id === 'mp4-max' ? 'max' : '720';
+      }
+
+      const response = await fetch('https://api.cobalt.tools/api/json', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate download link. The service might be temporarily unavailable.');
+      }
+
+      const data = await response.json();
+
+      if (data.status === 'error') {
+        throw new Error(data.text || 'Error generating download link.');
+      }
+
+      let downloadUrl = data.url;
+      
+      // If it's a picker (multiple items like a gallery), just grab the first video/audio
+      if (data.status === 'picker' && data.picker && data.picker.length > 0) {
+        downloadUrl = data.picker[0].url;
+      }
+
+      if (downloadUrl) {
+        try {
+          // Try to fetch the file to save to VFS
+          const fileResponse = await fetch(downloadUrl);
+          if (!fileResponse.ok) throw new Error('Network response was not ok');
+          const blob = await fileResponse.blob();
+          
+          // Convert blob to base64 for VFS
+          const reader = new FileReader();
+          reader.readAsDataURL(blob);
+          reader.onloadend = async () => {
+            const base64data = reader.result as string;
+            
+            // Save to VFS
+            const filename = `download_${Date.now()}.${format.type.toLowerCase()}`;
+            await addNode({
+              id: generateId(),
+              name: filename,
+              type: 'file',
+              content: base64data,
+              parentId: 'root',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              size: blob.size,
+              mimeType: blob.type || (format.isAudio ? 'audio/mp3' : 'video/mp4')
+            });
+
+            // Trigger local download using the blob
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+          };
+        } catch (fetchErr) {
+          console.warn("Could not fetch blob for VFS, falling back to direct download link", fetchErr);
+          // Fallback to direct download link if CORS prevents fetching
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.target = '_blank';
+          a.download = `download_${Date.now()}.${format.type.toLowerCase()}`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      } else {
+        throw new Error('No download URL returned from the server.');
+      }
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to download. Please try again.');
+    } finally {
+      setDownloadingFormat(null);
     }
   };
 
@@ -117,7 +187,7 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
             <Download className="w-8 h-8 text-indigo-400" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">꧁Rᴀʙʙʏ Eғᴛʏ꧂ Downloader</h1>
-          <p className="text-white/60">Download videos and MP3 (320K) from any website or platform link.</p>
+          <p className="text-white/60">Download videos (MP4) and high-quality audio (MP3 320K) directly to your device storage.</p>
         </div>
 
         <div className={`glass-card p-2 rounded-full border shadow-lg transition-all duration-500 ${isVpnConnected ? 'border-green-500/30 ring-1 ring-green-500/20' : 'border-white/10'}`}>
@@ -146,7 +216,7 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
               {isAnalyzing ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Analyzing...
+                  Loading...
                 </>
               ) : (
                 'Download'
@@ -191,7 +261,7 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
                     <span>{result.source}</span>
                   </div>
                   <h3 className="text-xl font-semibold text-white line-clamp-2">{result.title}</h3>
-                  <p className="text-sm text-white/50">Select a format below to start downloading.</p>
+                  <p className="text-sm text-white/50">Select a format below to save directly to your device.</p>
                 </div>
               </div>
               <div className="p-6 bg-black/20">
@@ -200,7 +270,8 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
                     <button
                       key={idx}
                       onClick={() => handleDownload(format)}
-                      className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group"
+                      disabled={downloadingFormat !== null}
+                      className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <div className="flex items-center space-x-3 text-white/90">
                         <div className="p-2 bg-white/10 rounded-lg group-hover:bg-indigo-500/20 group-hover:text-indigo-400 transition-colors">
@@ -208,10 +279,14 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
                         </div>
                         <div className="text-left">
                           <p className="font-medium">{format.quality}</p>
-                          <p className="text-xs text-white/50">{format.type} • {format.size}</p>
+                          <p className="text-xs text-white/50">{format.type} • Direct Save</p>
                         </div>
                       </div>
-                      <Download className="w-5 h-5 text-white/30 group-hover:text-white transition-colors" />
+                      {downloadingFormat === format.id ? (
+                        <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
+                      ) : (
+                        <HardDrive className="w-5 h-5 text-white/30 group-hover:text-white transition-colors" />
+                      )}
                     </button>
                   ))}
                 </div>

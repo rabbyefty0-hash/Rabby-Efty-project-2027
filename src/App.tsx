@@ -26,6 +26,7 @@ const VideoGenerator = lazy(() => import('./components/VideoGenerator').then(m =
 const VoiceChat = lazy(() => import('./components/VoiceChat').then(m => ({ default: m.VoiceChat })));
 const Vpn = lazy(() => import('./components/Vpn').then(m => ({ default: m.Vpn })));
 const Browser = lazy(() => import('./components/Browser').then(m => ({ default: m.Browser })));
+const Unblocker = lazy(() => import('./components/Unblocker').then(m => ({ default: m.Unblocker })));
 const VideoDownloader = lazy(() => import('./components/VideoDownloader').then(m => ({ default: m.VideoDownloader })));
 const FbAutoLike = lazy(() => import('./components/FbAutoLike').then(m => ({ default: m.FbAutoLike })));
 const BuildApk = lazy(() => import('./components/BuildApk').then(m => ({ default: m.BuildApk })));
@@ -42,15 +43,17 @@ const Followeran = lazy(() => import('./components/Followeran').then(m => ({ def
 const CameraApp = lazy(() => import('./components/CameraApp').then(m => ({ default: m.default })));
 const ContactsApp = lazy(() => import('./components/ContactsApp').then(m => ({ default: m.default })));
 const YouTubeApp = lazy(() => import('./components/YouTubeApp').then(m => ({ default: m.default })));
+const AiSearch = lazy(() => import('./components/AiSearch').then(m => ({ default: m.AiSearch })));
 
-type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube';
+type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search';
 
-const APPS = [
+export const APPS = [
   { id: 'image', name: 'Image', icon: ImageIcon, color: 'text-indigo-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'video', name: 'Video', icon: Video, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'voice', name: 'Voice', icon: Mic, color: 'text-rose-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'vpn', name: 'VPN', icon: Shield, color: 'text-teal-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'browser', name: 'Browser', icon: Globe, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'unblocker', name: 'Unblocker', icon: Shield, color: 'text-red-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'downloader', name: 'Downloader', icon: DownloadCloud, color: 'text-cyan-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'status', name: 'Status', icon: Activity, color: 'text-indigo-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'card-gen', name: 'Card Gen', icon: CreditCard, color: 'text-emerald-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -693,10 +696,16 @@ function AppContent() {
                   {activeTab === 'voice' && <VoiceChat isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'vpn' && <Vpn isConnected={isVpnConnected} setIsConnected={setIsVpnConnected} onBack={handleBack} />}
                   {activeTab === 'browser' && <Browser isVpnConnected={isVpnConnected} setIsVpnConnected={setIsVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'unblocker' && <Unblocker onBack={handleBack} onNavigateToBrowser={(url) => {
+                    handleNavigate('browser');
+                    localStorage.setItem('browser_home_url', url);
+                    localStorage.setItem('browser_use_proxy', 'true');
+                  }} />}
                   {activeTab === 'downloader' && <VideoDownloader isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'fb-autolike' && <FbAutoLike isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'build-apk' && <BuildApk isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'arena-ai' && <ArenaAi isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'ai-search' && <AiSearch onBack={handleBack} />}
                   {activeTab === 'card-gen' && <CardGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'temp-mail' && <TempMail isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'temp-number' && <TempNumber isVpnConnected={isVpnConnected} onBack={handleBack} />}

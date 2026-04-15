@@ -21,6 +21,7 @@ const APPS = [
   { id: 'status', name: 'Status', icon: Activity, color: 'text-white', bg: 'bg-gradient-to-br from-indigo-500 to-blue-700' },
   { id: 'card-gen', name: 'Card Gen', icon: CreditCard, color: 'text-white', bg: 'bg-gradient-to-br from-emerald-400 to-green-600' },
   { id: 'arena-ai', name: 'Arena AI', icon: Swords, color: 'text-white', bg: 'bg-gradient-to-br from-orange-400 to-red-600' },
+  { id: 'ai-search', name: 'AI Search', icon: Search, color: 'text-white', bg: 'bg-gradient-to-br from-blue-500 to-purple-600' },
   { id: 'fb-autolike', name: 'FB Liker', icon: ThumbsUp, color: 'text-white', bg: 'bg-gradient-to-br from-blue-500 to-blue-700' },
   { id: 'temp-mail', name: 'Temp Mail', icon: Mail, color: 'text-white', bg: 'bg-gradient-to-br from-violet-400 to-purple-600' },
   { id: 'temp-number', name: 'Temp Number', icon: Phone, color: 'text-white', bg: 'bg-gradient-to-br from-blue-400 to-cyan-600' },
@@ -38,6 +39,7 @@ const APPS = [
   { id: 'clock', name: 'Clock', icon: Clock, color: 'text-white', bg: 'bg-gradient-to-br from-black to-gray-800' },
   { id: 'contacts', name: 'Contacts', icon: Users, color: 'text-white', bg: 'bg-gradient-to-br from-blue-400 to-indigo-500' },
   { id: 'music', name: 'Music', icon: Music, color: 'text-white', bg: 'bg-gradient-to-br from-pink-500 to-rose-600' },
+  { id: 'youtube', name: 'YouTube', icon: Video, color: 'text-white', bg: 'bg-gradient-to-br from-red-500 to-red-700' },
 ];
 
 const CATEGORIES = [
@@ -47,7 +49,7 @@ const CATEGORIES = [
   },
   {
     name: "Creativity",
-    apps: ['image', 'video', 'voice', 'music', 'camera', 'gallery', 'arena-ai']
+    apps: ['image', 'video', 'voice', 'music', 'camera', 'gallery', 'arena-ai', 'ai-search', 'youtube']
   },
   {
     name: "Social",

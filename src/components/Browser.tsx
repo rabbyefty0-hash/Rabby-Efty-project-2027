@@ -41,7 +41,9 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
   const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
   
   const [isConnecting, setIsConnecting] = useState(false);
-  const [useProxy, setUseProxy] = useState(false);
+  const [useProxy, setUseProxy] = useState(() => {
+    return localStorage.getItem('browser_use_proxy') === 'true';
+  });
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showTabSwitcher, setShowTabSwitcher] = useState(false);
@@ -58,6 +60,10 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
   });
 
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
+
+  useEffect(() => {
+    localStorage.setItem('browser_use_proxy', useProxy.toString());
+  }, [useProxy]);
 
   useEffect(() => {
     localStorage.setItem('browser_bookmarks', JSON.stringify(bookmarks));
@@ -153,7 +159,8 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
 
   const getEffectiveUrl = (targetUrl: string, proxyEnabled: boolean) => {
     if (proxyEnabled && !targetUrl.includes('google.com/search?igu=1') && !targetUrl.includes('google.com')) {
-      return `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+      // Use a proxy that strips X-Frame-Options and bypasses CORS
+      return `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
     }
     if (targetUrl.includes('google.com') && !targetUrl.includes('igu=1')) {
       return targetUrl.includes('?') ? `${targetUrl}&igu=1` : `${targetUrl}?igu=1`;
