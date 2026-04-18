@@ -714,6 +714,7 @@ function AppContent() {
                   {activeTab === 'gallery' && <Gallery onBack={handleBack} />}
                   {activeTab === 'settings' && <SettingsApp onBack={handleBack} />}
                   {activeTab === 'followeran' && <Followeran onBack={handleBack} />}
+                  {activeTab === 'youtube' && <YouTubeApp onBack={handleBack} />}
                   {activeTab === 'calculator' && <CalculatorApp onBack={handleBack} />}
                   {activeTab === 'notes' && <NotesApp onBack={handleBack} />}
                   {activeTab === 'weather' && <WeatherApp onBack={handleBack} />}

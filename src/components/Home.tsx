@@ -204,13 +204,13 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
 
   return (
     <motion.div 
-      className="flex-1 overflow-y-auto p-4 pt-16 pb-32 relative z-10 custom-scrollbar h-full"
+      className="flex-1 overflow-y-auto p-2 sm:p-4 pt-16 pb-32 relative z-10 custom-scrollbar h-full w-full"
     >
-      <div className="max-w-5xl mx-auto relative">
+      <div className="w-full h-full relative">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
           <ClockWidget />
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 sm:gap-6 lg:col-span-2">
             <SmartStackWidget onNavigate={onNavigate} />
             <ArenaAiWidget onNavigate={onNavigate} />
           </div>
@@ -231,13 +231,13 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
                   onClick={() => onNavigate(app.id)}
-                  className="flex flex-col items-center space-y-1.5 group flex-shrink-0 w-[70px]"
+                  className="flex flex-col items-center space-y-1.5 group flex-shrink-0 w-[60px] sm:w-[70px]"
                 >
                   <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-                    <app.icon className={`w-6 h-6 sm:w-7 sm:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
+                    <app.icon className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
                   </div>
-                  <span className="text-[10px] font-medium text-white/90 truncate w-14 text-center drop-shadow-md tracking-wide">{app.name}</span>
+                  <span className="text-[10px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
                 </motion.button>
               ))}
             </div>
@@ -245,7 +245,7 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
         )}
 
         {/* Home Screen Apps Grid */}
-        <div className="grid grid-cols-4 gap-y-6 gap-x-4 mb-8 mt-4 px-2">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-y-6 gap-x-2 sm:gap-x-4 mb-8 mt-4 px-1 sm:px-2">
           {APPS.filter(app => ['camera', 'gallery', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 'settings', 'calculator', 'weather', 'calendar', 'clock', 'music', 'maps', 'contacts', 'downloader'].includes(app.id)).map((app, index) => (
             <motion.button
               key={app.id}
@@ -257,9 +257,9 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
             >
               <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-                <app.icon className={`w-6 h-6 sm:w-7 sm:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
+                <app.icon className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
               </div>
-              <span className="text-[11px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
+              <span className="text-[10px] sm:text-[11px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
             </motion.button>
           ))}
         </div>

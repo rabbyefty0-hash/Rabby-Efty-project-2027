@@ -89,13 +89,48 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
     }
   }, [selectedVideo]);
 
+  const mapInvidiousToYouTubeVideo = (item: any): YouTubeVideo => ({
+    id: { videoId: item.videoId },
+    snippet: {
+      title: item.title,
+      description: item.description || '',
+      thumbnails: {
+        medium: { url: item.videoThumbnails?.find((t: any) => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url || '' },
+        high: { url: item.videoThumbnails?.find((t: any) => t.quality === 'high')?.url || item.videoThumbnails?.[0]?.url || '' }
+      },
+      channelTitle: item.author,
+      publishedAt: item.publishedText || ''
+    }
+  });
+
+  const INVIDIOUS_INSTANCES = [
+    'https://inv.thepixora.com',
+    'https://invidious.nerdvpn.de',
+    'https://yt.chocolatemoo53.com',
+    'https://inv.nadeko.net'
+  ];
+
+  const fetchWithFallback = async (endpoint: string) => {
+    for (const instance of INVIDIOUS_INSTANCES) {
+      try {
+        const res = await fetch(`${instance}${endpoint}`);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch from ${instance}`);
+      }
+    }
+    throw new Error('All Invidious instances failed');
+  };
+
   const fetchTrending = async () => {
     setIsLoading(true);
     setError(null);
     try {
       if (!apiKey) {
-        // Use mock data if no API key
-        setVideos(MOCK_VIDEOS);
+        const data = await fetchWithFallback('/api/v1/trending');
+        setVideos(data.filter((item: any) => item.type === 'video' || item.videoId).map(mapInvidiousToYouTubeVideo));
         setIsLoading(false);
         return;
       }
@@ -105,7 +140,12 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       setVideos(data.items || MOCK_VIDEOS);
     } catch (err: any) {
       console.warn('API failed, using fallback data', err);
-      setVideos(MOCK_VIDEOS);
+      try {
+        const data = await fetchWithFallback('/api/v1/trending');
+        setVideos(data.filter((item: any) => item.type === 'video' || item.videoId).map(mapInvidiousToYouTubeVideo));
+      } catch (fallbackErr) {
+        setVideos(MOCK_VIDEOS);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -117,7 +157,8 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
     setError(null);
     try {
       if (!apiKey) {
-        setVideos(MOCK_VIDEOS);
+        const data = await fetchWithFallback(`/api/v1/search?q=${encodeURIComponent(query)}`);
+        setVideos(data.filter((item: any) => item.type === 'video' || item.videoId).map(mapInvidiousToYouTubeVideo));
         setIsLoading(false);
         return;
       }
@@ -127,7 +168,12 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       setVideos(data.items || MOCK_VIDEOS);
     } catch (err: any) {
       console.warn('API failed, using fallback data', err);
-      setVideos(MOCK_VIDEOS);
+      try {
+        const data = await fetchWithFallback(`/api/v1/search?q=${encodeURIComponent(query)}`);
+        setVideos(data.filter((item: any) => item.type === 'video' || item.videoId).map(mapInvidiousToYouTubeVideo));
+      } catch (fallbackErr) {
+        setVideos(MOCK_VIDEOS);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -138,8 +184,32 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
     const videoId = typeof video.id === 'string' ? video.id : video.id.videoId;
     try {
       if (!apiKey) {
-        setRelatedVideos(MOCK_VIDEOS);
-        setComments([]);
+        try {
+          const data = await fetchWithFallback(`/api/v1/videos/${videoId}`);
+          if (data.recommendedVideos) {
+            setRelatedVideos(data.recommendedVideos.map(mapInvidiousToYouTubeVideo));
+          } else {
+            setRelatedVideos(MOCK_VIDEOS);
+          }
+          
+          const commentsData = await fetchWithFallback(`/api/v1/comments/${videoId}`);
+          setComments(commentsData.comments?.map((c: any) => ({
+            snippet: {
+              topLevelComment: {
+                snippet: {
+                  authorDisplayName: c.author,
+                  authorProfileImageUrl: c.authorThumbnails?.[0]?.url,
+                  textDisplay: c.contentHtml || c.content,
+                  likeCount: c.likeCount,
+                  publishedAt: c.publishedText
+                }
+              }
+            }
+          })) || []);
+        } catch (e) {
+          setRelatedVideos(MOCK_VIDEOS);
+          setComments([]);
+        }
         setIsLoadingExtra(false);
         return;
       }
@@ -160,7 +230,12 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       }
     } catch (err) {
       console.error("Failed to fetch extra data", err);
-      setRelatedVideos(MOCK_VIDEOS);
+      try {
+        const data = await fetchWithFallback(`/api/v1/videos/${videoId}`);
+        if (data.recommendedVideos) {
+          setRelatedVideos(data.recommendedVideos.map(mapInvidiousToYouTubeVideo));
+        }
+      } catch (e) {}
     } finally {
       setIsLoadingExtra(false);
     }
@@ -251,11 +326,6 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
 
       {/* Video List */}
       <div className="flex-1 overflow-y-auto pb-16">
-        {!apiKey && !isLoading && (
-          <div className="bg-blue-900/40 text-blue-200 p-3 text-xs text-center border-b border-blue-500/30">
-            Using mock data. Add VITE_YOUTUBE_API_KEY to .env for real results.
-          </div>
-        )}
         {isLoading ? (
           <div className="flex justify-center items-center h-40">
             <Loader2 className="w-8 h-8 animate-spin text-red-600" />
@@ -267,7 +337,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
             <button onClick={fetchTrending} className="mt-4 px-4 py-2 bg-white/10 rounded-full text-white">Retry</button>
           </div>
         ) : (
-          <div className="flex flex-col gap-1 sm:gap-4 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-0 sm:p-4">
             {videos.map((video, idx) => (
               <div 
                 key={idx} 
@@ -290,7 +360,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
                     <div className="text-xs text-gray-400 flex items-center flex-wrap gap-1">
                       <span>{video.snippet.channelTitle}</span>
                       <span className="text-[10px]">•</span>
-                      <span>{new Date(video.snippet.publishedAt).toLocaleDateString()}</span>
+                      <span>{video.snippet.publishedAt.includes('T') ? new Date(video.snippet.publishedAt).toLocaleDateString() : video.snippet.publishedAt}</span>
                     </div>
                     <MoreVertical className="w-4 h-4 text-white/50 absolute right-0 top-0" />
                   </div>
@@ -335,7 +405,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
             src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1`}
             title={selectedVideo.snippet.title}
             frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             className="w-full h-full"
           ></iframe>
@@ -345,7 +415,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
           <div className="p-4">
             <h1 className="text-lg font-bold mb-2 leading-tight" dangerouslySetInnerHTML={{ __html: selectedVideo.snippet.title }} />
             <div className="flex items-center text-xs text-gray-400 mb-4">
-              <span>{new Date(selectedVideo.snippet.publishedAt).toLocaleDateString()}</span>
+              <span>{selectedVideo.snippet.publishedAt.includes('T') ? new Date(selectedVideo.snippet.publishedAt).toLocaleDateString() : selectedVideo.snippet.publishedAt}</span>
             </div>
 
             <div className="flex items-center justify-between mb-4">
@@ -415,7 +485,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
                       <h4 className="text-sm font-medium line-clamp-2 leading-tight text-white" dangerouslySetInnerHTML={{ __html: video.snippet.title }} />
                       <span className="text-xs text-gray-400 mt-1">{video.snippet.channelTitle}</span>
                       <div className="text-xs text-gray-400 flex items-center flex-wrap gap-1">
-                        <span>{new Date(video.snippet.publishedAt).toLocaleDateString()}</span>
+                        <span>{video.snippet.publishedAt.includes('T') ? new Date(video.snippet.publishedAt).toLocaleDateString() : video.snippet.publishedAt}</span>
                       </div>
                     </div>
                   </div>
