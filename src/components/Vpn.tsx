@@ -223,6 +223,13 @@ export function Vpn({ isConnected, setIsConnected, onBack }: VpnProps) {
                 </p>
               </div>
             </div>
+            <button 
+              onClick={toggleVpn}
+              disabled={isConnecting}
+              className={`w-12 h-6 rounded-full transition-colors relative ${isConnected ? 'bg-emerald-500' : 'bg-white/20'} ${isConnecting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${isConnected ? 'left-7' : 'left-1'}`} />
+            </button>
           </div>
 
           {/* Connection Details (Only visible when connected) */}

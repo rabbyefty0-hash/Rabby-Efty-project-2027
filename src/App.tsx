@@ -4,7 +4,7 @@ import { Apps } from './components/Apps';
 import { StatusBar } from './components/StatusBar';
 import { UploadedFile, ChatMessage } from './types';
 import { initChatSession, sendChatMessage, restoreChatHistory } from './services/gemini';
-import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube, Bell, Search, Wand2 } from 'lucide-react';
+import { FileText, Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube, Bell, Search, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged, User } from './firebase';
 import { populateDummyData } from './lib/populate';
@@ -45,11 +45,14 @@ const YouTubeApp = lazy(() => import('./components/YouTubeApp').then(m => ({ def
 const AiSearch = lazy(() => import('./components/AiSearch').then(m => ({ default: m.AiSearch })));
 const ImageGenerator = lazy(() => import('./components/ImageGenerator').then(m => ({ default: m.ImageGenerator })));
 
-type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search';
+const TextGenerator = lazy(() => import('./components/TextGenerator').then(m => ({ default: m.TextGenerator })));
+
+type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search' | 'text-gen';
 
 export const APPS = [
   { id: 'ai-search', name: 'AI Search', icon: Search, color: 'text-orange-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'image', name: 'AI Image', icon: Wand2, color: 'text-purple-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'text-gen', name: 'AI Writer', icon: FileText, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'video', name: 'Video', icon: Video, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'voice', name: 'Voice', icon: Mic, color: 'text-rose-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'vpn', name: 'VPN', icon: Shield, color: 'text-teal-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -760,6 +763,7 @@ function AppContent() {
                   </motion.div>
                 }>
                   {activeTab === 'image' && <ImageGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
+                  {activeTab === 'text-gen' && <TextGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'video' && <VideoGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'voice' && <VoiceChat isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'vpn' && <Vpn isConnected={isVpnConnected} setIsConnected={setIsVpnConnected} onBack={handleBack} />}

@@ -15,7 +15,11 @@ import {
   Film, 
   Swords,
   Upload,
-  Edit2
+  Edit2,
+  Zap,
+  SlidersHorizontal,
+  MessageSquare,
+  Mic
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageEditor } from './ImageEditor';
@@ -198,6 +202,68 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
     }
   };
 
+  const handleAiEdit = async () => {
+    if (!referenceImage) {
+      setError("Please capture or select an image to edit.");
+      return;
+    }
+    if (!prompt.trim()) {
+      setError("Please describe how you want to edit the image.");
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    setStatus('Applying AI Edit...');
+
+    try {
+      const customKey = localStorage.getItem('custom_gemini_api_key');
+      const apiKey = customKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) throw new Error("API Key is missing. Please set it in Settings.");
+
+      const ai = new GoogleGenAI({ apiKey });
+      
+      let finalPrompt = prompt;
+      if (selectedStyle !== 'none') {
+         const styleName = STYLES.find(s => s.id === selectedStyle)?.name;
+         finalPrompt = `${prompt}, ${styleName} aesthetic`;
+      }
+
+      const contentsParts: any[] = [
+         { inlineData: { data: referenceImage.base64, mimeType: referenceImage.mimeType } },
+         { text: `Edit this image based on the following instructions: ${finalPrompt}. Provide ONLY the edited image, no text.` }
+      ];
+
+      const response = await ai.models.generateContent({
+         model: 'gemini-2.5-flash-image',
+         contents: { parts: contentsParts },
+         config: {}
+      });
+
+      let found = false;
+      if (response.candidates?.[0]?.content?.parts) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) {
+             const base64Image = part.inlineData.data;
+             const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
+             setGeneratedImages(prev => [dataUrl, ...prev]);
+             found = true;
+             console.log(`Generated and saved edited image.`);
+             break;
+          }
+        }
+      }
+      if (!found) throw new Error("The AI failed to edit your image. Try refinement.");
+    } catch (imgError: any) {
+       console.error("Image editing error", imgError);
+       setError(imgError.message || "Failed to edit image.");
+    } finally {
+       setIsGenerating(false);
+       setStatus('');
+    }
+  };
+
   const triggerDownload = (url: string, filename: string) => {
     const a = document.createElement('a');
     a.href = url;
@@ -252,11 +318,11 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
             </motion.button>
           )}
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg shadow-indigo-500/20 ios-icon">
-              <Sparkles className="w-5 h-5 text-white" />
+            <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg shadow-indigo-500/20 ios-icon hidden sm:flex">
+              <ImageIcon className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-white/90 font-sans">Efty AI Labs</h1>
+              <h1 className="text-lg font-bold tracking-tight text-white/90 font-sans">ৡRABBY EFTYৡ Image</h1>
               <div className="flex items-center gap-1.5 leading-none">
                 <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
                 <p className="text-[10px] text-indigo-400/80 font-bold uppercase tracking-widest">Image Engine v3</p>
@@ -270,139 +336,109 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
         <div className="max-w-3xl mx-auto space-y-8">
           
           {/* Main Control Hub */}
-          <div className="glass-card rounded-[3rem] p-8 space-y-8 liquid-glass shadow-2xl border-white/10 relative group">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 pointer-events-none" />
+          <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-6">
+            <div className="w-20 h-20 bg-[#1A1A1A] rounded-3xl flex items-center justify-center border border-white/5">
+              <ImageIcon className="w-10 h-10 text-indigo-400" />
+            </div>
+            <p className="text-sm text-center text-white/70 max-w-xs font-medium leading-relaxed">
+              Describe what you want to see, or upload an image to edit and enhance it.
+            </p>
+          </div>
+
+          <div className="bg-[#111111]/80 backdrop-blur-3xl rounded-[2rem] p-4 space-y-3 border border-white/5 shadow-2xl relative mx-auto max-w-sm w-full">
+            {referenceImage && (
+              <div className="bg-[#222] p-2 rounded-2xl flex items-center justify-between">
+                <img src={referenceImage.url} alt="Reference" className="w-10 h-10 rounded-xl object-cover border border-white/20" />
+                <button 
+                  onClick={() => setReferenceImage(null)}
+                  className="p-2 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pl-1">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-white/40" />
-                  <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">The Vision Prompt</label>
-                </div>
-                {prompt.length > 0 && (
-                  <button onClick={() => setPrompt('')} className="text-[10px] font-bold text-indigo-400/80 uppercase hover:text-indigo-300">Clear</button>
-                )}
-              </div>
+            <div className="flex items-center gap-3">
+              <label className="w-[3.5rem] h-[3.5rem] shrink-0 bg-white/5 hover:bg-white/10 transition-colors rounded-[1rem] flex items-center justify-center cursor-pointer border border-white/5 shadow-inner">
+                <Upload className="w-5 h-5 text-indigo-400" />
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
               
-              <div className="relative">
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="What masterpiece should we create today?"
-                  className="w-full h-36 bg-black/40 border border-white/10 rounded-[2rem] p-6 pb-12 text-sm text-white placeholder:text-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 resize-none transition-all duration-300 shadow-inner"
-                />
-                
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {referenceImage ? (
-                      <div className="relative group/img">
-                        <img src={referenceImage.url} alt="Reference" className="w-10 h-10 rounded-xl object-cover border border-white/20" />
-                        <button 
-                          onClick={() => setReferenceImage(null)}
-                          className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors">
-                        <Upload className="w-4 h-4 text-white/50" />
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                      </label>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <input
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Ask ৡRABBY EFTYৡ"
+                className="flex-1 bg-white/5 border border-white/5 rounded-[1rem] h-[3.5rem] px-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-indigo-500/50 shadow-inner min-w-0"
+              />
+              
+              <button className="w-[3.5rem] h-[3.5rem] shrink-0 bg-white/5 hover:bg-white/10 transition-colors rounded-[1rem] flex items-center justify-center border border-white/5 text-amber-400 shadow-inner">
+                <Zap className="w-5 h-5" />
+              </button>
             </div>
-
-            <div className="space-y-4">
-              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase ml-1">Dimensions</label>
-              <div className="flex gap-2 p-1.5 bg-black/40 rounded-3xl border border-white/5">
-                {(['1:1', '16:9', '9:16', '3:4', '4:3'] as const).map((ratio) => (
-                  <button
-                    key={ratio}
-                    onClick={() => setAspectRatio(ratio)}
-                    className={`flex-1 py-3 text-[10px] font-bold rounded-2xl transition-all duration-300 ${
-                      aspectRatio === ratio 
-                        ? 'bg-white/10 text-white shadow-lg border border-white/20' 
-                        : 'text-white/30 hover:text-white/60'
-                    }`}
-                  >
-                    {ratio}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pl-1">
-                <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Aesthetic Style</label>
-                <span className="text-[10px] font-bold text-indigo-400/80 uppercase">{STYLES.find(s => s.id === selectedStyle)?.name}</span>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar -mx-2 px-2">
-                {STYLES.map((style) => (
-                  <button
-                    key={style.id}
-                    onClick={() => setSelectedStyle(style.id)}
-                    className={`flex-shrink-0 flex flex-col items-center gap-3 p-4 rounded-3xl transition-all duration-300 border ${
-                      selectedStyle === style.id 
-                        ? 'bg-white/10 border-white/30 scale-105 shadow-xl' 
-                        : 'bg-black/20 border-white/5'
-                    }`}
-                    style={{ minWidth: '90px' }}
-                  >
-                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${style.color} flex items-center justify-center shadow-lg ios-icon`}>
-                      <style.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <span className={`text-[10px] font-bold tracking-wide ${selectedStyle === style.id ? 'text-white' : 'text-white/40'}`}>
-                      {style.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-4">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={generateImage}
-                disabled={!prompt.trim() || isGenerating}
-                className={`w-full py-6 rounded-[2.5rem] font-bold text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-4 transition-all duration-500 overflow-hidden relative ${
-                  !prompt.trim() || isGenerating 
-                    ? 'bg-zinc-900 border border-white/5 text-white/10' 
-                    : 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_20px_50px_rgba(79,70,229,0.4)]'
-                }`}
+            
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setSelectedStyle(selectedStyle === 'none' ? 'photorealistic' : 'none')}
+                className={`w-[3.5rem] h-[3.5rem] shrink-0 transition-colors rounded-[1rem] flex items-center justify-center border border-white/5 shadow-inner ${selectedStyle !== 'none' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/5 hover:bg-white/10 text-white/50'}`}
               >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Rendering...</span>
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="w-5 h-5" />
-                    <span>Manifest Vision</span>
-                  </>
-                )}
-                {isGenerating && (
-                  <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 animate-pulse" />
-                )}
-              </motion.button>
+                <SlidersHorizontal className="w-5 h-5" />
+              </button>
               
-              <AnimatePresence>
-                {status && (
-                  <motion.p 
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="text-center text-[10px] text-indigo-400 font-bold mt-4 tracking-widest uppercase animate-pulse"
+              {referenceImage ? (
+                <>
+                  <button 
+                    onClick={handleAiEdit}
+                    disabled={!prompt.trim() || isGenerating}
+                    className={`flex-1 h-[3.5rem] rounded-[1rem] font-medium tracking-wide flex items-center justify-center transition-all ${
+                      !prompt.trim() || isGenerating ? 'bg-purple-600/50 text-white/50' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/25'
+                    }`}
                   >
-                    {status}
-                  </motion.p>
-                )}
-              </AnimatePresence>
+                     {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "AI Edit"}
+                  </button>
+                  <button 
+                    onClick={generateImage}
+                    disabled={!prompt.trim() || isGenerating}
+                    className={`flex-1 h-[3.5rem] rounded-[1rem] font-medium tracking-wide flex items-center justify-center transition-all ${
+                      !prompt.trim() || isGenerating ? 'bg-indigo-600/50 text-white/50' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25'
+                    }`}
+                  >
+                     {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Generate"}
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={generateImage}
+                  disabled={!prompt.trim() || isGenerating}
+                  className={`flex-1 h-[3.5rem] rounded-[1rem] font-medium tracking-wide flex items-center justify-center transition-all ${
+                    !prompt.trim() || isGenerating ? 'bg-indigo-600/50 text-white/50' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25'
+                  }`}
+                >
+                   {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Generate"}
+                </button>
+              )}
             </div>
+            
+            {status && (
+               <p className="text-center text-xs text-indigo-400 font-medium animate-pulse mt-2">{status}</p>
+            )}
+          </div>
+
+          <div className="flex justify-center pt-2">
+            <button 
+              onClick={() => {
+                const prompts = [
+                  "A cyberpunk city in the rain, neon lights reflections", 
+                  "A majestic lion with glowing quantum fur",
+                  "A cinematic portrait of a futuristic samurai",
+                  "An ancient temple hidden in a bioluminescent jungle"
+                ];
+                setPrompt(prompts[Math.floor(Math.random() * prompts.length)]);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 text-white/80 text-[13px] font-medium transition-colors"
+            >
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+              Surprise Me
+            </button>
           </div>
 
           {error && (
@@ -490,18 +526,24 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
           </AnimatePresence>
 
           {!isGenerating && generatedImages.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center space-y-8 opacity-20 group">
-               <div className="relative">
-                 <div className="absolute -inset-8 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all" />
-                 <ImageIcon className="w-16 h-16 relative" strokeWidth={1} />
-               </div>
-               <div className="space-y-4">
-                 <p className="text-xs font-black tracking-[0.4em] uppercase text-indigo-400">Void Canvas</p>
-                 <p className="text-xs max-w-[240px] leading-relaxed mx-auto font-medium">Capture your thoughts in text to see them materialize in the Lab.</p>
-               </div>
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-8 opacity-0">
+               {/* Hidden state to keep layout structure */}
             </div>
           )}
         </div>
+      </div>
+      
+      {/* Floating Action Buttons */}
+      <div className="absolute bottom-6 left-6 z-40 pointer-events-auto">
+        <button className="w-14 h-14 bg-indigo-500 rounded-[1.2rem] rounded-bl-[0.5rem] flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white hover:bg-indigo-400 transition-colors">
+          <MessageSquare className="w-6 h-6 fill-current" />
+        </button>
+      </div>
+
+      <div className="absolute bottom-6 right-6 z-40 pointer-events-auto">
+        <button className="w-14 h-14 bg-[#8B5CF6] rounded-full flex items-center justify-center shadow-lg shadow-purple-500/20 text-white hover:bg-purple-400 transition-colors">
+          <Mic className="w-6 h-6" />
+        </button>
       </div>
 
       <AnimatePresence>
