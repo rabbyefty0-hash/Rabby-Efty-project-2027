@@ -21,6 +21,7 @@ const APPS = [
   { id: 'status', name: 'Status', icon: Activity, color: 'text-white', bg: 'bg-gradient-to-br from-indigo-500 to-blue-700' },
   { id: 'card-gen', name: 'Card Gen', icon: CreditCard, color: 'text-white', bg: 'bg-gradient-to-br from-emerald-400 to-green-600' },
   { id: 'arena-ai', name: 'Arena AI', icon: Swords, color: 'text-white', bg: 'bg-gradient-to-br from-orange-400 to-red-600' },
+  { id: 'unblocker', name: 'Unblocker', icon: Shield, color: 'text-white', bg: 'bg-gradient-to-br from-red-400 to-rose-600' },
   { id: 'ai-search', name: 'AI Search', icon: Search, color: 'text-white', bg: 'bg-gradient-to-br from-blue-500 to-purple-600' },
   { id: 'fb-autolike', name: 'FB Liker', icon: ThumbsUp, color: 'text-white', bg: 'bg-gradient-to-br from-blue-500 to-blue-700' },
   { id: 'temp-mail', name: 'Temp Mail', icon: Mail, color: 'text-white', bg: 'bg-gradient-to-br from-violet-400 to-purple-600' },
@@ -61,7 +62,7 @@ const CATEGORIES = [
   },
   {
     name: "Productivity",
-    apps: ['vpn', 'browser', 'downloader', 'status', 'card-gen', 'build-apk']
+    apps: ['vpn', 'browser', 'downloader', 'status', 'card-gen', 'build-apk', 'unblocker']
   }
 ];
 

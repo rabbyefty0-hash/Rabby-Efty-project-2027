@@ -72,7 +72,7 @@ export function Calculator({ onBack }: CalculatorProps) {
   ];
 
   return (
-    <div 
+    <motion.div 
       className="flex flex-col h-full bg-black text-white"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -137,6 +137,6 @@ export function Calculator({ onBack }: CalculatorProps) {
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

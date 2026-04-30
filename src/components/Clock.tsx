@@ -87,7 +87,7 @@ export function Clock({ onBack }: ClockProps) {
   ];
 
   return (
-    <div 
+    <motion.div 
       className="flex flex-col h-full bg-black text-white"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -278,6 +278,6 @@ export function Clock({ onBack }: ClockProps) {
           </button>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }

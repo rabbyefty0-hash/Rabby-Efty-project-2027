@@ -60,8 +60,14 @@ export function LockScreen({ wallpaperUrl, iconShape, onUnlock }: LockScreenProp
             }}
             className="flex flex-col items-center cursor-grab active:cursor-grabbing"
           >
-            <span className="text-sm font-medium text-white/80 mb-2 tracking-wide">Swipe up to unlock</span>
-            <div className="w-32 h-1.5 bg-white rounded-full" />
+            <motion.span 
+              animate={{ opacity: [0.5, 1, 0.5], y: [0, -3, 0] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              className="text-sm font-medium text-white/80 mb-2 tracking-wide"
+            >
+              Swipe up to unlock
+            </motion.span>
+            <div className="w-32 h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
           </motion.div>
         </div>
       </div>

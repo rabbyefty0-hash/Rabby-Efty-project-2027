@@ -101,7 +101,7 @@ export function Calendar({ onBack }: CalendarProps) {
   };
 
   return (
-    <div 
+    <motion.div 
       className="flex flex-col h-full bg-white text-gray-900 relative"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -268,6 +268,6 @@ export function Calendar({ onBack }: CalendarProps) {
           className="absolute inset-0 bg-black/20 z-10"
         />
       )}
-    </div>
+    </motion.div>
   );
 }

@@ -1,11 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Image as ImageIcon, Loader2, Download, Upload, X, Wand2, Crop, Maximize, Settings2, Sparkles, Sun, Contrast, Droplets, Palette, RotateCcw, ShieldCheck, ZoomIn, ZoomOut, History, Trash2, Zap, Save, AlertCircle } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Card } from './ui/card';
+import { 
+  Image as ImageIcon, 
+  Loader2, 
+  Download, 
+  AlertCircle, 
+  Sparkles, 
+  X, 
+  Wand2, 
+  ArrowLeft, 
+  Camera, 
+  Palette, 
+  Box, 
+  Film, 
+  Swords,
+  Upload,
+  Edit2
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useTheme } from '../ThemeContext';
+import { ImageEditor } from './ImageEditor';
 
 declare global {
   interface Window {
@@ -21,1126 +34,438 @@ interface ImageGeneratorProps {
   onBack?: () => void;
 }
 
-export function ImageGenerator({ isVpnConnected, onBack }: ImageGeneratorProps) {
+export function ImageGenerator({ onBack }: ImageGeneratorProps) {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const [sourceImage, setSourceImage] = useState<{data: string, mimeType: string, url: string} | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const { iconShape } = useTheme();
-  
-  // Advanced settings
-  const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('2K');
-  const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3' | '3:4'>('1:1');
-  const [photorealistic, setPhotorealistic] = useState(true);
-  const [showEditor, setShowEditor] = useState(false);
-  
-  // Image editing filters
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
-  const [saturation, setSaturation] = useState(100);
-  const [red, setRed] = useState(0);
-  const [green, setGreen] = useState(0);
-  const [blue, setBlue] = useState(0);
-
-  // Zoom and Pan state
-  const [scale, setScale] = useState(1);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [isRefining, setIsRefining] = useState(false);
-  const [showStyleModal, setShowStyleModal] = useState(false);
-  const [selectedStyle, setSelectedStyle] = useState('Studio Lighting');
-  const [recentPrompts, setRecentPrompts] = useState<string[]>(() => {
-    const saved = localStorage.getItem('recentImagePrompts');
+  const [generatedImages, setGeneratedImages] = useState<string[]>(() => {
+    const saved = localStorage.getItem('generatedImages');
     return saved ? JSON.parse(saved) : [];
   });
-
-  const IMAGE_STYLES = [
-    "Realistic / Photographic",
-    "Anime / Manga",
-    "3D Render / Pixar",
-    "Watercolor Painting",
-    "Cyberpunk / Neon",
-    "Enhance / Upscale",
-    "Studio Lighting",
-    "Isolate Subject (White BG)",
-    "Cinematic / Movie Still",
-    "Vintage / Retro",
-    "Pencil Sketch",
-    "Pop Art",
-    "Oil Painting"
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
+  const [referenceImage, setReferenceImage] = useState<{base64: string, mimeType: string, url: string} | null>(null);
+  const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
+  
+  const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '3:4' | '4:3'>('1:1');
+  const [selectedStyle, setSelectedStyle] = useState('none');
+  
+  const STYLES = [
+    { id: 'none', name: 'Original', icon: Sparkles, color: 'from-blue-400 to-indigo-500' },
+    { id: 'photorealistic', name: 'Photo', icon: Camera, color: 'from-amber-400 to-orange-500' },
+    { id: 'anime', name: 'Anime', icon: Swords, color: 'from-pink-400 to-rose-500' },
+    { id: 'digital-art', name: 'Digital', icon: Palette, color: 'from-emerald-400 to-teal-500' },
+    { id: '3d-render', name: '3D Render', icon: Box, color: 'from-cyan-400 to-blue-500' },
+    { id: 'cinematic', name: 'Cinematic', icon: Film, color: 'from-slate-600 to-slate-800' },
   ];
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    localStorage.setItem('generatedImages', JSON.stringify(generatedImages));
+  }, [generatedImages]);
 
-  const ENHANCE_PRESETS = [
-    "Enhance Image Quality",
-    "Apply HDR effect",
-    "Apply DSLR iPhone filter",
-    "Enhance lighting and details",
-    "Studio portrait lighting",
-    "Make it cinematic",
-    "Vintage film camera look",
-    "Black and white noir",
-    "Cyberpunk neon style",
-    "Convert to anime style",
-    "3D Pixar animation style",
-    "Oil painting masterpiece",
-    "Turn into a watercolor painting",
-    "Pencil sketch"
-  ];
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size must be less than 5MB");
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = (reader.result as string).split(',')[1];
-      setSourceImage({
-        data: base64String,
-        mimeType: file.type,
-        url: URL.createObjectURL(file)
-      });
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const matches = dataUrl.match(/^data:(image\/[a-zA-Z0-9]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        setReferenceImage({
+          mimeType: matches[1],
+          base64: matches[2],
+          url: dataUrl
+        });
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  const clearSourceImage = () => {
-    setSourceImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const processImage = async (action: 'crop' | 'scale' | 'filter', value?: number) => {
-    setIsProcessing(true);
-    try {
-      const targetUrl = imageUrl || (sourceImage ? `data:${sourceImage.mimeType};base64,${sourceImage.data}` : null);
-      if (!targetUrl) return;
-
-      const resultDataUrl = await new Promise<string>((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Could not get canvas context'));
-            return;
-          }
-
-          if (action === 'crop' && value !== undefined) {
-            const ratio = value;
-            let srcWidth = img.width;
-            let srcHeight = img.height;
-            let srcRatio = srcWidth / srcHeight;
-            
-            let destWidth = srcWidth;
-            let destHeight = srcHeight;
-            
-            if (srcRatio > ratio) {
-              destWidth = srcHeight * ratio;
-            } else {
-              destHeight = srcWidth / ratio;
-            }
-            
-            canvas.width = destWidth;
-            canvas.height = destHeight;
-            
-            const offsetX = (srcWidth - destWidth) / 2;
-            const offsetY = (srcHeight - destHeight) / 2;
-            
-            ctx.drawImage(img, offsetX, offsetY, destWidth, destHeight, 0, 0, destWidth, destHeight);
-          } else if (action === 'scale' && value !== undefined) {
-            const scaleFactor = value;
-            canvas.width = img.width * scaleFactor;
-            canvas.height = img.height * scaleFactor;
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          } else if (action === 'filter') {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            
-            // Apply CSS-like filters
-            ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
-            ctx.drawImage(img, 0, 0);
-            
-            // Apply manual color balance if needed
-            if (red !== 0 || green !== 0 || blue !== 0) {
-              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const data = imageData.data;
-              for (let i = 0; i < data.length; i += 4) {
-                data[i] = Math.min(255, Math.max(0, data[i] + red));     // R
-                data[i+1] = Math.min(255, Math.max(0, data[i+1] + green)); // G
-                data[i+2] = Math.min(255, Math.max(0, data[i+2] + blue));  // B
-              }
-              ctx.putImageData(imageData, 0, 0);
-            }
-          }
-          
-          resolve(canvas.toDataURL('image/png'));
-        };
-        img.onerror = () => reject(new Error('Failed to load image for processing'));
-        img.src = targetUrl;
-      });
-
-      if (imageUrl) {
-        setImageUrl(resultDataUrl);
-      } else if (sourceImage) {
-        setSourceImage({
-          data: resultDataUrl.split(',')[1],
-          mimeType: 'image/png',
-          url: resultDataUrl
-        });
-      }
-
-      if (action === 'filter') {
-        resetFilters();
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Failed to process image');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const resetFilters = () => {
-    setBrightness(100);
-    setContrast(100);
-    setSaturation(100);
-    setRed(0);
-    setGreen(0);
-    setBlue(0);
-  };
-
-  const refinePrompt = async () => {
-    if (!prompt.trim()) return;
-    setIsRefining(true);
-    try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('API Key missing');
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Enhance the following prompt to be more specific and action-oriented, focusing on clarity and conciseness. For example, instead of 'Add search', suggest 'Implement a search bar with real-time suggestions'. Prompt: "${prompt}"`,
-      });
-      if (response.text) {
-        setPrompt(response.text.trim());
-      }
-    } catch (err) {
-      console.error('Failed to refine prompt:', err);
-    } finally {
-      setIsRefining(false);
-    }
-  };
-
-  const surpriseMe = async () => {
-    setIsRefining(true);
-    try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('API Key missing');
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: "Generate a random, creative, and visually stunning image prompt for an AI generator. Something unique like 'A floating city made of bioluminescent jellyfish in a nebula'. Keep it under 30 words.",
-      });
-      if (response.text) {
-        setPrompt(response.text.trim());
-      }
-    } catch (err) {
-      console.error('Failed to get surprise prompt:', err);
-    } finally {
-      setIsRefining(false);
-    }
-  };
-
-  const clearHistory = () => {
-    setRecentPrompts([]);
-    localStorage.removeItem('recentImagePrompts');
-  };
-
-  const handleGenerate = async (e?: React.FormEvent, presetPrompt?: string) => {
-    if (e) e.preventDefault();
-    let finalPrompt = presetPrompt || prompt;
-    if (!finalPrompt.trim() && !sourceImage) return;
-
-    // Save to history if it's a custom prompt
-    if (!presetPrompt && prompt.trim()) {
-      setRecentPrompts(prev => {
-        const updated = [prompt, ...prev.filter(p => p !== prompt)].slice(0, 8);
-        localStorage.setItem('recentImagePrompts', JSON.stringify(updated));
-        return updated;
-      });
-    }
-
-    if (selectedStyle && !sourceImage) {
-      const styleModifiers: Record<string, string> = {
-        "Realistic / Photographic": "highly detailed, photorealistic, 8k resolution, masterpiece, sharp focus, hyper-realistic",
-        "Anime / Manga": "anime style, studio ghibli, makoto shinkai, highly detailed, vibrant colors, 2d illustration",
-        "3D Render / Pixar": "3d render, pixar style, disney style, octane render, unreal engine 5, volumetric lighting",
-        "Watercolor Painting": "watercolor painting, artistic, expressive brushstrokes, soft lighting, masterpiece",
-        "Cyberpunk / Neon": "cyberpunk, neon lights, futuristic, sci-fi, dark city, highly detailed, cinematic lighting",
-        "Enhance / Upscale": "enhanced quality, 8k, ultra detailed, sharp focus, professional photography",
-        "Studio Lighting": "studio lighting, professional portrait, dramatic lighting, rim light, softbox, highly detailed",
-        "Isolate Subject (White BG)": "isolated on pure white background, studio lighting, product photography, clean edges",
-        "Cinematic / Movie Still": "cinematic lighting, movie still, 35mm lens, anamorphic, highly detailed, dramatic",
-        "Vintage / Retro": "vintage photography, retro aesthetic, film grain, polaroid, nostalgic, faded colors",
-        "Pencil Sketch": "pencil sketch, graphite, detailed drawing, artistic, hatching, black and white",
-        "Pop Art": "pop art style, Andy Warhol, vibrant colors, comic book style, halftone patterns",
-        "Oil Painting": "oil painting, thick impasto, classic art, museum quality, expressive brushstrokes"
-      };
-      
-      if (styleModifiers[selectedStyle]) {
-        finalPrompt = `${finalPrompt}, ${styleModifiers[selectedStyle]}`;
-      }
-    }
-
-    if (photorealistic && !sourceImage && selectedStyle !== "Realistic / Photographic") {
-      finalPrompt = `${finalPrompt}, highly detailed, photorealistic, 8k resolution, masterpiece, cinematic lighting, sharp focus, hyper-realistic`;
-    }
-
-    if (red !== 0 || green !== 0 || blue !== 0) {
-      const tints = [];
-      if (red > 20) tints.push("strong red tint");
-      else if (red > 0) tints.push("slight red tint");
-      else if (red < -20) tints.push("reduced red colors");
-      
-      if (green > 20) tints.push("strong green tint");
-      else if (green > 0) tints.push("slight green tint");
-      else if (green < -20) tints.push("reduced green colors");
-      
-      if (blue > 20) tints.push("strong blue tint");
-      else if (blue > 0) tints.push("slight blue tint");
-      else if (blue < -20) tints.push("reduced blue colors");
-      
-      if (tints.length > 0) {
-        finalPrompt += `, with ${tints.join(", ")}`;
-      }
+  const generateImage = async () => {
+    if (!prompt.trim()) {
+      setError("An empty canvas needs words to come alive.");
+      return;
     }
 
     setIsGenerating(true);
     setError('');
-    setImageUrl(null);
+    setStatus('Whispering to the AI...');
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('API Key is missing in the environment.');
-      }
+      const customKey = localStorage.getItem('custom_gemini_api_key');
+      const apiKey = customKey || process.env.API_KEY || process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) throw new Error("API Key is missing. Please set it in Settings.");
 
       const ai = new GoogleGenAI({ apiKey });
       
-      const parts: any[] = [];
-      if (sourceImage) {
-        parts.push({
-          inlineData: {
-            data: sourceImage.data,
-            mimeType: sourceImage.mimeType
-          }
-        });
-        finalPrompt = `${finalPrompt}. CRITICAL INSTRUCTION: Preserve the original face, facial features, and subject identity perfectly. Do not alter or change the face of the person in the image.`;
+      let finalPrompt = prompt;
+      if (selectedStyle !== 'none') {
+         const styleName = STYLES.find(s => s.id === selectedStyle)?.name;
+         finalPrompt = `${prompt}, ${styleName} aesthetic, masterpiece, highly detailed, professional lighting, 8k`;
       }
+
+      setStatus('Visioning your concept...');
       
-      parts.push({ text: finalPrompt || 'Enhance this image' });
+      const contentsParts: any[] = [];
+      if (referenceImage) {
+        contentsParts.push({ inlineData: { data: referenceImage.base64, mimeType: referenceImage.mimeType } });
+      }
+      contentsParts.push({ text: finalPrompt });
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts },
-        config: {
-          imageConfig: {
-            aspectRatio: aspectRatio as any
-          }
-        }
+         model: 'gemini-2.5-flash-image',
+         contents: {
+           parts: contentsParts
+         },
+         config: {
+           imageConfig: {
+             aspectRatio: aspectRatio
+           }
+         }
       });
 
-      let foundImage = false;
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          setImageUrl(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
-          foundImage = true;
-          resetFilters();
-          break;
+      let found = false;
+      if (response.candidates?.[0]?.content?.parts) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) {
+             const base64Image = part.inlineData.data;
+             const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
+             setGeneratedImages(prev => [dataUrl, ...prev]);
+             found = true;
+             
+             const fileName = `efty-gen-${Date.now()}.jpg`;
+             console.log(`Generated and saved: ${fileName}`);
+             break;
+          }
         }
       }
       
-      if (!foundImage) {
-        throw new Error('No image was generated. Please try a different prompt.');
+      if (!found) {
+         throw new Error("The AI failed to render your vision. Try refinement.");
       }
+
     } catch (err: any) {
-      console.error(err);
-      const errorMessage = err?.message || '';
-      let displayError = errorMessage;
-      
-      if (errorMessage.includes('PERMISSION_DENIED') || errorMessage.includes('403')) {
-        displayError = 'Permission denied. Please ensure your API key has access to this model.';
-      } else if (errorMessage.startsWith('{')) {
-        try {
-          const parsed = JSON.parse(errorMessage);
-          if (parsed.error && parsed.error.message) {
-            displayError = parsed.error.message;
-          }
-        } catch (e) {}
-      }
-      
-      setError(displayError || (typeof err === 'object' ? JSON.stringify(err) : String(err)) || 'Failed to generate image');
+      console.error("AI Generation Error:", err);
+      setError(err.message || "Something interrupted the creative spark.");
     } finally {
       setIsGenerating(false);
+      setStatus('');
     }
   };
 
-  const getDescriptiveFilename = () => {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const safePrompt = prompt.replace(/[^a-z0-9]/gi, '_').substring(0, 30) || 'generated';
-    return `ai-image-${safePrompt}-${timestamp}.png`;
+  const downloadImage = (url: string) => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Efty-AI-${Date.now()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
-
-  const handleDownload = () => {
-    if (!imageUrl) return;
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = getDescriptiveFilename();
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleSaveToGallery = async () => {
-    if (!imageUrl) return;
-    try {
-      const { addNode, generateId } = await import('../lib/vfs');
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const filename = getDescriptiveFilename();
-      
-      await addNode({
-        id: generateId(),
-        name: filename,
-        type: 'file',
-        parentId: 'root',
-        data: blob,
-        mimeType: 'image/png',
-        size: blob.size,
-        createdAt: Date.now(),
-        modifiedAt: Date.now()
-      });
-      alert('Saved to Gallery!');
-    } catch (error) {
-      console.error('Failed to save to gallery:', error);
-      alert('Failed to save to gallery.');
-    }
-  };
-
-  // Zoom and Pan Handlers
-  const handleWheel = (e: React.WheelEvent) => {
-    if ((imageUrl || sourceImage)) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      const newScale = Math.min(Math.max(scale + delta, 0.5), 5);
-      setScale(newScale);
-      if (newScale === 1) setPosition({ x: 0, y: 0 });
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (scale > 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const resetZoom = () => {
-    setScale(1);
-    setPosition({ x: 0, y: 0 });
-  };
-
-  const getIconShapeClass = () => {
-    switch (iconShape) {
-      case 'circle': return 'rounded-full';
-      case 'square': return 'rounded-md';
-      case 'squircle': default: return 'rounded-2xl';
-    }
-  };
-
+  
   return (
-    <div 
-      className="flex flex-col h-full bg-black relative overflow-hidden"
-      style={{ touchAction: 'pan-y' }}
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col h-full bg-zinc-950 text-white relative h-full w-full overflow-hidden"
     >
-      <div 
-        className="absolute inset-y-0 left-0 w-4 z-50"
-        onPointerDown={(e) => {
-          const startX = e.clientX;
-          const handlePointerUp = (upEvent: PointerEvent) => {
-            if (upEvent.clientX - startX > 50) {
-              if (onBack) onBack();
-            }
-            window.removeEventListener('pointerup', handlePointerUp);
-          };
-          window.addEventListener('pointerup', handlePointerUp);
-        }}
-      />
       {/* Header */}
-      <div className="p-4 pt-12 flex items-center justify-between z-10 glass-panel border-b border-white/5 sticky top-0">
-        <div className="flex items-center space-x-2">
-          <ImageIcon className="w-5 h-5 text-indigo-400" />
-          <h1 className="text-lg font-semibold tracking-tight">꧁Rᴀʙʙʏ Eғᴛʏ꧂ Image</h1>
-          {isVpnConnected && (
-            <div className="flex items-center space-x-1.5 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full ml-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[9px] font-bold uppercase tracking-widest text-green-400">Secure</span>
-            </div>
+      <div className="flex items-center justify-between p-4 pt-12 glass-panel border-b border-white/10 z-30">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
+              onClick={onBack} 
+              className="p-2.5 bg-white/5 hover:bg-white/10 rounded-2xl transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-white/70" />
+            </motion.button>
           )}
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg shadow-indigo-500/20 ios-icon">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-white/90 font-sans">Efty AI Labs</h1>
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
+                <p className="text-[10px] text-indigo-400/80 font-bold uppercase tracking-widest">Image Engine v3</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-5 pb-safe relative z-10 flex flex-col items-center custom-scrollbar">
-        <div className="w-full max-w-3xl space-y-6">
-          <div className="text-center space-y-2 mt-2 mb-6">
-            <div className={`w-16 h-16 glass-card ${getIconShapeClass()} flex items-center justify-center mx-auto mb-4 shadow-sm`}>
-              <ImageIcon className="w-8 h-8 text-indigo-400" />
-            </div>
-            <p className="text-white/60 text-[15px]">Describe what you want to see, or upload an image to edit and enhance it.</p>
-          </div>
-
-          <Card className={`p-4 relative transition-all duration-500 ${isVpnConnected ? 'border-green-500/30 ring-1 ring-green-500/20' : 'border-white/10'}`}>
-          <AnimatePresence>
-            {isVpnConnected && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute -top-6 left-4"
-              >
-                <div className="flex items-center space-x-1.5 bg-green-500/20 border border-green-500/30 px-2 py-0.5 rounded-t-lg">
-                  <ShieldCheck className="w-3 h-3 text-green-400" />
-                  <span className="text-[9px] font-bold text-green-400 uppercase tracking-widest">VPN Secured Generation</span>
+      <div className="flex-1 overflow-y-auto p-5 custom-scrollbar pb-32">
+        <div className="max-w-3xl mx-auto space-y-8">
+          
+          {/* Main Control Hub */}
+          <div className="glass-card rounded-[3rem] p-8 space-y-8 liquid-glass shadow-2xl border-white/10 relative group">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 pointer-events-none" />
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pl-1">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-white/40" />
+                  <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">The Vision Prompt</label>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <AnimatePresence>
-            {sourceImage && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                className="relative block w-full"
-              >
-                <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-sm inline-block">
-                  <img src={sourceImage.url} alt="Source" className="h-40 w-auto object-cover" />
-                  <button 
-                    onClick={clearSourceImage}
-                    className={`absolute top-2 right-2 w-7 h-7 bg-black/50 hover:bg-black/70 text-white ${getIconShapeClass()} flex items-center justify-center backdrop-blur-md transition-colors`}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <form onSubmit={(e) => handleGenerate(e)} className="flex flex-col md:flex-row gap-3">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
-              accept="image/*" 
-              className="hidden" 
-            />
-            <div className="flex-1 flex items-center gap-2 relative">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => fileInputRef.current?.click()}
-                className={`h-14 w-14 ${getIconShapeClass()} shrink-0 border-white/10 bg-white/5 hover:bg-white/10 text-indigo-400`}
-                title="Upload image to edit"
-              >
-                <Upload className="w-5 h-5" />
-              </Button>
-              <div className="relative flex-1">
-                <Input
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder={sourceImage ? "How should ꧁Rᴀʙʙʏ Eғᴛʏ꧂ edit this?" : "Ask ꧁Rᴀʙʙʏ Eғᴛʏ꧂ to generate..."}
-                  disabled={isGenerating || isRefining}
-                  className={`w-full glass-input ${getIconShapeClass()} pl-6 pr-12 h-14 text-base text-white placeholder:text-white/40 focus-visible:ring-0 focus-visible:ring-offset-0 border-none`}
-                />
-                {prompt && (
-                  <button
-                    type="button"
-                    onClick={() => setPrompt('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                {prompt.length > 0 && (
+                  <button onClick={() => setPrompt('')} className="text-[10px] font-bold text-indigo-400/80 uppercase hover:text-indigo-300">Clear</button>
                 )}
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={refinePrompt}
-                disabled={!prompt.trim() || isGenerating || isRefining}
-                className={`h-14 w-14 ${getIconShapeClass()} shrink-0 border-white/10 bg-white/5 hover:bg-white/10 text-amber-400 transition-all ${isRefining ? 'animate-pulse' : ''}`}
-                title="Magic Refine Prompt"
-              >
-                {isRefining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-              </Button>
+              
+              <div className="relative">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="What masterpiece should we create today?"
+                  className="w-full h-36 bg-black/40 border border-white/10 rounded-[2rem] p-6 pb-12 text-sm text-white placeholder:text-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 resize-none transition-all duration-300 shadow-inner"
+                />
+                
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {referenceImage ? (
+                      <div className="relative group/img">
+                        <img src={referenceImage.url} alt="Reference" className="w-10 h-10 rounded-xl object-cover border border-white/20" />
+                        <button 
+                          onClick={() => setReferenceImage(null)}
+                          className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors">
+                        <Upload className="w-4 h-4 text-white/50" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowStyleModal(true)}
-                className={`h-14 w-14 ${getIconShapeClass()} shrink-0 border-white/10 bg-white/5 hover:bg-white/10 text-pink-400`}
-                title="Image Style"
-              >
-                <Palette className="w-5 h-5" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowSettings(!showSettings)}
-                className={`h-14 w-14 ${getIconShapeClass()} shrink-0 border-white/10 transition-colors ${showSettings ? 'bg-indigo-500 text-white' : 'bg-white/5 hover:bg-white/10 text-indigo-400'}`}
-                title="Advanced Settings"
-              >
-                <Settings2 className="w-5 h-5" />
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={(!prompt.trim() && !sourceImage) || isGenerating}
-                className={`flex-1 md:flex-none h-14 px-8 ${getIconShapeClass()} shadow-sm bg-indigo-500 hover:bg-indigo-600 text-white border-none shrink-0 font-bold`}
+
+            <div className="space-y-4">
+              <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase ml-1">Dimensions</label>
+              <div className="flex gap-2 p-1.5 bg-black/40 rounded-3xl border border-white/5">
+                {(['1:1', '16:9', '9:16', '3:4', '4:3'] as const).map((ratio) => (
+                  <button
+                    key={ratio}
+                    onClick={() => setAspectRatio(ratio)}
+                    className={`flex-1 py-3 text-[10px] font-bold rounded-2xl transition-all duration-300 ${
+                      aspectRatio === ratio 
+                        ? 'bg-white/10 text-white shadow-lg border border-white/20' 
+                        : 'text-white/30 hover:text-white/60'
+                    }`}
+                  >
+                    {ratio}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pl-1">
+                <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase">Aesthetic Style</label>
+                <span className="text-[10px] font-bold text-indigo-400/80 uppercase">{STYLES.find(s => s.id === selectedStyle)?.name}</span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar -mx-2 px-2">
+                {STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => setSelectedStyle(style.id)}
+                    className={`flex-shrink-0 flex flex-col items-center gap-3 p-4 rounded-3xl transition-all duration-300 border ${
+                      selectedStyle === style.id 
+                        ? 'bg-white/10 border-white/30 scale-105 shadow-xl' 
+                        : 'bg-black/20 border-white/5'
+                    }`}
+                    style={{ minWidth: '90px' }}
+                  >
+                    <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${style.color} flex items-center justify-center shadow-lg ios-icon`}>
+                      <style.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <span className={`text-[10px] font-bold tracking-wide ${selectedStyle === style.id ? 'text-white' : 'text-white/40'}`}>
+                      {style.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={generateImage}
+                disabled={!prompt.trim() || isGenerating}
+                className={`w-full py-6 rounded-[2.5rem] font-bold text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-4 transition-all duration-500 overflow-hidden relative ${
+                  !prompt.trim() || isGenerating 
+                    ? 'bg-zinc-900 border border-white/5 text-white/10' 
+                    : 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-[0_20px_50px_rgba(79,70,229,0.4)]'
+                }`}
               >
                 {isGenerating ? (
                   <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Generating...
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Rendering...</span>
                   </>
                 ) : (
-                  sourceImage ? 'Edit / Enhance' : 'Generate'
-                )}
-              </Button>
-            </div>
-          </form>
-        </Card>
-
-        <AnimatePresence>
-          {showSettings && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, y: -10 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -10 }}
-              className="overflow-hidden"
-            >
-              <Card className="p-4 glass-card border-white/10 space-y-4">
-                <details className="group" open>
-                  <summary className="flex items-center justify-between cursor-pointer list-none text-sm font-medium text-white/80">
-                    <div className="flex items-center">
-                      <Sparkles className="w-4 h-4 mr-2 text-indigo-400" />
-                      Generation Settings
-                    </div>
-                    <span className="transition group-open:rotate-180">
-                      <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
-                    </span>
-                  </summary>
-                  <div className="pt-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-3">
-                        <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Resolution</label>
-                        <div className="flex bg-black/40 rounded-xl p-1 border border-white/5">
-                          {(['1K', '2K', '4K'] as const).map((size) => (
-                            <button
-                              key={size}
-                              type="button"
-                              onClick={() => setImageSize(size)}
-                              className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${imageSize === size ? 'bg-indigo-500 text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-                            >
-                              {size}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Aspect Ratio</label>
-                        <div className="flex bg-black/40 rounded-xl p-1 border border-white/5 overflow-x-auto hide-scrollbar">
-                          {(['1:1', '16:9', '9:16', '4:3', '3:4'] as const).map((ratio) => (
-                            <button
-                              key={ratio}
-                              type="button"
-                              onClick={() => setAspectRatio(ratio)}
-                              className={`flex-1 min-w-[48px] py-2 text-xs font-medium rounded-lg transition-all ${aspectRatio === ratio ? 'bg-indigo-500 text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
-                            >
-                              {ratio}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <label className="text-sm font-medium text-white">Photorealistic Enhancement</label>
-                        <p className="text-xs text-white/50">Automatically appends high-quality modifiers to your prompt</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setPhotorealistic(!photorealistic)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${photorealistic ? 'bg-indigo-500' : 'bg-white/10'}`}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${photorealistic ? 'translate-x-6' : 'translate-x-1'}`} />
-                      </button>
-                    </div>
-                  </div>
-                </details>
-
-                <details className="group pt-4 border-t border-white/5">
-                  <summary className="flex items-center justify-between cursor-pointer list-none text-sm font-medium text-white/80">
-                    <div className="flex items-center">
-                      <Palette className="w-4 h-4 mr-2 text-indigo-400" />
-                      Color Balance (Tint)
-                    </div>
-                    <span className="transition group-open:rotate-180">
-                      <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
-                    </span>
-                  </summary>
-                  <div className="pt-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-3 p-3 bg-red-500/10 rounded-xl border border-red-500/20">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-red-400 uppercase tracking-wider">Red Tint</label>
-                          <span className="text-xs font-mono text-white/90 bg-black/30 px-2 py-0.5 rounded">{red > 0 ? `+${red}` : red}</span>
-                        </div>
-                        <input 
-                          type="range" min="-100" max="100" value={red} 
-                          onChange={(e) => setRed(parseInt(e.target.value))}
-                          className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-red-500"
-                        />
-                      </div>
-                      <div className="space-y-3 p-3 bg-green-500/10 rounded-xl border border-green-500/20">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-green-400 uppercase tracking-wider">Green Tint</label>
-                          <span className="text-xs font-mono text-white/90 bg-black/30 px-2 py-0.5 rounded">{green > 0 ? `+${green}` : green}</span>
-                        </div>
-                        <input 
-                          type="range" min="-100" max="100" value={green} 
-                          onChange={(e) => setGreen(parseInt(e.target.value))}
-                          className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-green-500"
-                        />
-                      </div>
-                      <div className="space-y-3 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-blue-400 uppercase tracking-wider">Blue Tint</label>
-                          <span className="text-xs font-mono text-white/90 bg-black/30 px-2 py-0.5 rounded">{blue > 0 ? `+${blue}` : blue}</span>
-                        </div>
-                        <input 
-                          type="range" min="-100" max="100" value={blue} 
-                          onChange={(e) => setBlue(parseInt(e.target.value))}
-                          className="w-full h-2 bg-black/40 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
-                      </div>
-                    </div>
-                    {(imageUrl || sourceImage) && (
-                      <div className="flex justify-end pt-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => processImage('filter')}
-                          disabled={isProcessing}
-                          className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-xs h-8"
-                        >
-                          {isProcessing ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : <Palette className="w-3 h-3 mr-1.5" />}
-                          Apply Tint to Image
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </details>
-              </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="flex flex-wrap gap-2 justify-center">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={surpriseMe}
-            disabled={isGenerating || isRefining}
-            className="rounded-full bg-white/5 border-white/10 text-indigo-300 hover:bg-white/10 text-xs"
-          >
-            <Sparkles className="w-3 h-3 mr-1.5" />
-            Surprise Me
-          </Button>
-        </div>
-
-        <AnimatePresence>
-          {recentPrompts.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-3"
-            >
-              <div className="flex items-center justify-between px-2">
-                <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] flex items-center">
-                  <History className="w-3 h-3 mr-1.5" />
-                  Recent Prompts
-                </h3>
-                <button 
-                  onClick={clearHistory}
-                  className="text-[10px] font-bold text-red-400/50 hover:text-red-400 transition-colors uppercase tracking-widest"
-                >
-                  Clear
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {recentPrompts.map((p, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setPrompt(p)}
-                    className="px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-xs text-white/60 hover:text-white hover:bg-white/10 transition-all max-w-[200px] truncate"
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {sourceImage && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex flex-wrap gap-2 justify-center"
-            >
-              {ENHANCE_PRESETS.map((preset, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setPrompt(preset);
-                    handleGenerate(undefined, preset);
-                  }}
-                  disabled={isGenerating}
-                  className="flex items-center space-x-1.5 px-4 py-2 rounded-full text-xs font-medium bg-white/10 hover:bg-white/20 border border-white/10 text-white/90 transition-colors shadow-sm backdrop-blur-md"
-                >
-                  <Wand2 className="w-3 h-3 text-indigo-400" />
-                  <span>{preset}</span>
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {(sourceImage || imageUrl) && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="w-full space-y-6"
-            >
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center">
-                  <Crop className="w-3 h-3 mr-1.5" />
-                  Resize & Crop
-                </div>
-                <button 
-                  onClick={() => setShowEditor(!showEditor)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center ${showEditor ? 'bg-indigo-500 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
-                >
-                  <Palette className="w-3 h-3 mr-1.5" />
-                  {showEditor ? 'Hide Advanced Tools' : 'Show Advanced Tools'}
-                </button>
-              </div>
-              
-              <div className="flex flex-wrap gap-2 justify-center">
-                {[
-                  { label: '1:1', value: 1, type: 'crop' as const },
-                  { label: '16:9', value: 16/9, type: 'crop' as const },
-                  { label: '9:16', value: 9/16, type: 'crop' as const },
-                  { label: '4:3', value: 4/3, type: 'crop' as const },
-                  { label: 'Scale 2x', value: 2, type: 'scale' as const },
-                  { label: 'Upscale 4X', value: 4, type: 'scale' as const },
-                  { label: 'Upscale 8X', value: 8, type: 'scale' as const },
-                  { label: 'Scale 0.5x', value: 0.5, type: 'scale' as const },
-                ].map((action) => (
-                  <button
-                    key={action.label}
-                    onClick={() => processImage(action.type, action.value)}
-                    disabled={isProcessing || isGenerating}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 hover:bg-white/20 border border-white/10 text-white/90 transition-colors shadow-sm backdrop-blur-md flex items-center"
-                  >
-                    {isProcessing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-
-              <AnimatePresence>
-                {showEditor && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <Card className="p-6 glass-card border-white/10 space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Basic Adjustments */}
-                        <div className="space-y-6">
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center">
-                                <Sun className="w-3 h-3 mr-1.5" />
-                                Brightness
-                              </label>
-                              <span className="text-xs text-white/70">{brightness}%</span>
-                            </div>
-                            <input 
-                              type="range" min="0" max="200" value={brightness} 
-                              onChange={(e) => setBrightness(parseInt(e.target.value))}
-                              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center">
-                                <Contrast className="w-3 h-3 mr-1.5" />
-                                Contrast
-                              </label>
-                              <span className="text-xs text-white/70">{contrast}%</span>
-                            </div>
-                            <input 
-                              type="range" min="0" max="200" value={contrast} 
-                              onChange={(e) => setContrast(parseInt(e.target.value))}
-                              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
-                          </div>
-
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-semibold text-white/50 uppercase tracking-wider flex items-center">
-                                <Droplets className="w-3 h-3 mr-1.5" />
-                                Saturation
-                              </label>
-                              <span className="text-xs text-white/70">{saturation}%</span>
-                            </div>
-                            <input 
-                              type="range" min="0" max="200" value={saturation} 
-                              onChange={(e) => setSaturation(parseInt(e.target.value))}
-                              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-end space-x-4 pt-4 border-t border-white/5">
-                        <button
-                          onClick={resetFilters}
-                          className="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-medium text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>Reset Filters</span>
-                        </button>
-                        <Button
-                          onClick={() => processImage('filter')}
-                          disabled={isProcessing}
-                          className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl px-6"
-                        >
-                          {isProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                          Apply Changes
-                        </Button>
-                      </div>
-                    </Card>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {error && (
-          <div className="p-4 bg-red-500/20 border border-red-500/30 text-red-200 rounded-2xl text-center backdrop-blur-md">
-            {error}
-          </div>
-        )}
-
-        <AnimatePresence mode="wait">
-          {isGenerating ? (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative rounded-[2.5rem] overflow-hidden glass-card shadow-xl border border-white/10 p-2 w-full aspect-square md:aspect-video flex items-center justify-center bg-white/5"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-              <div className="flex flex-col items-center justify-center space-y-4 z-10">
-                <div className="relative w-16 h-16">
-                  <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
-                  <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
-                </div>
-                <p className="text-indigo-300 font-medium animate-pulse">Generating your masterpiece...</p>
-              </div>
-            </motion.div>
-          ) : (imageUrl || sourceImage) ? (
-            <motion.div
-              key="image"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="relative rounded-[2.5rem] overflow-hidden glass-card shadow-xl border border-white/10 p-2 w-full"
-              onWheel={handleWheel}
-            >
-              <div 
-                className="relative w-full h-full overflow-hidden rounded-[2rem] bg-zinc-900/50"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-              >
-                <img 
-                  src={imageUrl || sourceImage?.url || undefined} 
-                  alt={prompt || "Source image"} 
-                  className="w-full h-auto object-contain select-none pointer-events-none"
-                  style={{ 
-                    transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                    transition: isDragging ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)',
-                    cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
-                    filter: `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`
-                  }}
-                  referrerPolicy="no-referrer"
-                />
-                
-                {/* Real-time Color Tint Overlay */}
-                {(red !== 0 || green !== 0 || blue !== 0) && (
-                  <div 
-                    className="absolute inset-0 pointer-events-none mix-blend-overlay"
-                    style={{
-                      backgroundColor: `rgb(${red > 0 ? 255 : 0}, ${green > 0 ? 255 : 0}, ${blue > 0 ? 255 : 0})`,
-                      opacity: Math.max(Math.abs(red), Math.abs(green), Math.abs(blue)) / 200
-                    }}
-                  />
-                )}
-              </div>
-
-              {/* Zoom Controls */}
-              <div className="absolute top-6 right-6 flex flex-col space-y-2">
-                <button 
-                  onClick={() => setScale(prev => Math.min(prev + 0.2, 5))}
-                  className="w-10 h-10 bg-black/50 backdrop-blur-xl text-white rounded-full flex items-center justify-center hover:bg-black/70 transition-colors border border-white/10"
-                  title="Zoom In"
-                >
-                  <ZoomIn className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => setScale(prev => Math.max(prev - 0.2, 0.5))}
-                  className="w-10 h-10 bg-black/50 backdrop-blur-xl text-white rounded-full flex items-center justify-center hover:bg-black/70 transition-colors border border-white/10"
-                  title="Zoom Out"
-                >
-                  <ZoomOut className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={resetZoom}
-                  className="w-10 h-10 bg-black/50 backdrop-blur-xl text-white rounded-full flex items-center justify-center hover:bg-black/70 transition-colors border border-white/10"
-                  title="Reset Zoom"
-                >
-                  <Maximize className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="absolute bottom-6 right-6 flex space-x-2">
-                {imageUrl && (
                   <>
-                    <button 
-                      onClick={handleSaveToGallery}
-                      className="px-5 h-12 bg-indigo-500/80 backdrop-blur-xl text-white rounded-full shadow-lg flex items-center justify-center hover:bg-indigo-600/80 transition-colors border border-white/10"
-                    >
-                      <Save className="w-5 h-5 mr-2" />
-                      <span className="font-medium">Save to Gallery</span>
-                    </button>
-                    <button 
-                      onClick={handleDownload}
-                      className="px-5 h-12 bg-black/50 backdrop-blur-xl text-white rounded-full shadow-lg flex items-center justify-center hover:bg-black/70 transition-colors border border-white/10"
-                    >
-                      <Download className="w-5 h-5 mr-2" />
-                      <span className="font-medium">Download</span>
-                    </button>
+                    <Wand2 className="w-5 h-5" />
+                    <span>Manifest Vision</span>
                   </>
                 )}
-                {!imageUrl && sourceImage && (
-                  <div className="px-5 h-12 bg-indigo-500/80 backdrop-blur-xl text-white rounded-full shadow-lg flex items-center justify-center border border-white/10">
-                    <Wand2 className="w-5 h-5 mr-2" />
-                    <span className="font-medium">Ready to Edit</span>
-                  </div>
+                {isGenerating && (
+                  <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 animate-pulse" />
                 )}
-              </div>
+              </motion.button>
               
-              {scale > 1 && (
-                <div className="absolute bottom-6 left-6 px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-bold text-white/70 uppercase tracking-widest border border-white/10">
-                  Zoom: {Math.round(scale * 100)}% • Drag to Pan
-                </div>
-              )}
+              <AnimatePresence>
+                {status && (
+                  <motion.p 
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-center text-[10px] text-indigo-400 font-bold mt-4 tracking-widest uppercase animate-pulse"
+                  >
+                    {status}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5 flex items-center gap-4 text-red-200"
+            >
+              <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+              <p className="text-sm font-medium">{error}</p>
+              <button onClick={() => setError('')} className="ml-auto p-2 hover:bg-white/10 rounded-full transition-colors">
+                <X className="w-5 h-5 text-white/30" />
+              </button>
             </motion.div>
-          ) : null}
-        </AnimatePresence>
+          )}
+
+          {/* Results Grid */}
+          <AnimatePresence>
+            {generatedImages.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-8 px-2"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-4 items-baseline">
+                    <h2 className="text-xl font-bold tracking-tight text-white/90">Curated Arts</h2>
+                    <span className="text-[10px] font-black text-white/20 tracking-[0.3em] uppercase">{generatedImages.length} Saved</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                  {generatedImages.map((img, idx) => (
+                    <motion.div 
+                      key={idx}
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="group relative glass-card rounded-[3.5rem] overflow-hidden p-3 transition-all duration-700 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)]"
+                    >
+                      <div className="w-full h-full rounded-[3rem] overflow-hidden relative">
+                        <img src={img} alt="Creation" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                        
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-500 flex items-end p-8">
+                           <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-4 lg:translate-y-6 lg:group-hover:translate-y-0 transition-transform duration-500">
+                             <div className="flex flex-col gap-1">
+                               <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Artifact {generatedImages.length - idx}</p>
+                               <p className="text-lg font-bold text-white/90">Efty AI Labs</p>
+                             </div>
+                             <div className="flex gap-2 flex-wrap">
+                                <motion.button 
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => setEditingImageIndex(idx)}
+                                  className="px-4 py-3 bg-white/10 backdrop-blur-3xl rounded-[1.5rem] border border-white/20 hover:bg-white/20 transition-all font-bold flex items-center gap-2 text-xs"
+                                >
+                                  <Edit2 className="w-4 h-4 text-white" />
+                                  <span className="text-white">Edit</span>
+                                </motion.button>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => downloadImage(img)}
+                                  className="px-4 py-3 bg-white/10 backdrop-blur-3xl rounded-[1.5rem] border border-white/20 hover:bg-white/20 transition-all flex items-center gap-2 text-xs"
+                                >
+                                  <Download className="w-4 h-4 text-white" />
+                                  <span className="text-white">Save</span>
+                                </motion.button>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => setGeneratedImages(prev => prev.filter((_, i) => i !== idx))}
+                                  className="p-3 bg-rose-500/10 backdrop-blur-3xl rounded-[1.5rem] border border-rose-500/20 hover:bg-rose-500/30 transition-all hidden md:block"
+                                >
+                                  <X className="w-4 h-4 text-rose-300" />
+                                </motion.button>
+                             </div>
+                           </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {!isGenerating && generatedImages.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-8 opacity-20 group">
+               <div className="relative">
+                 <div className="absolute -inset-8 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all" />
+                 <ImageIcon className="w-16 h-16 relative" strokeWidth={1} />
+               </div>
+               <div className="space-y-4">
+                 <p className="text-xs font-black tracking-[0.4em] uppercase text-indigo-400">Void Canvas</p>
+                 <p className="text-xs max-w-[240px] leading-relaxed mx-auto font-medium">Capture your thoughts in text to see them materialize in the Lab.</p>
+               </div>
+            </div>
+          )}
         </div>
       </div>
 
       <AnimatePresence>
-        {showStyleModal && (
-          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowStyleModal(false)}>
-            <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 100 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-[#f8f9fa] rounded-3xl overflow-hidden shadow-2xl text-black"
-            >
-              <div className="p-2 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                {IMAGE_STYLES.map((style, idx) => (
-                  <button
-                    key={style}
-                    type="button"
-                    onClick={() => {
-                      setSelectedStyle(style);
-                      setShowStyleModal(false);
-                    }}
-                    className={`w-full flex items-center justify-between p-4 text-left text-lg ${idx !== IMAGE_STYLES.length - 1 ? 'border-b border-gray-200/60' : ''} hover:bg-gray-100 transition-colors`}
-                  >
-                    <span className="text-gray-800">{style}</span>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${selectedStyle === style ? 'border-indigo-600' : 'border-gray-300'}`}>
-                      {selectedStyle === style && <div className="w-3 h-3 bg-indigo-600 rounded-full" />}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </div>
+        {editingImageIndex !== null && (
+          <ImageEditor
+            imageUrl={generatedImages[editingImageIndex]}
+            onClose={() => setEditingImageIndex(null)}
+            onSave={(dataUrl) => {
+               const newImages = [...generatedImages];
+               newImages[editingImageIndex] = dataUrl;
+               setGeneratedImages(newImages);
+               setEditingImageIndex(null);
+            }}
+            onUseAsReference={(dataUrl) => {
+               const matches = dataUrl.match(/^data:(image\/[a-zA-Z0-9]+);base64,(.+)$/);
+               if (matches && matches.length === 3) {
+                 setReferenceImage({
+                   mimeType: matches[1],
+                   base64: matches[2],
+                   url: dataUrl
+                 });
+                 setEditingImageIndex(null);
+                 window.scrollTo({ top: 0, behavior: 'smooth' });
+               }
+            }}
+          />
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
+

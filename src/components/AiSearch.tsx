@@ -31,10 +31,10 @@ export function AiSearch({ onBack }: AiSearchProps) {
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.1-pro-preview',
         contents: `Search the web and provide a comprehensive, up-to-date answer for: "${query}"`,
         tools: [{ googleSearch: {} }]
-      });
+      } as any);
 
       if (response.text) {
         setResult(response.text);
@@ -107,10 +107,12 @@ export function AiSearch({ onBack }: AiSearchProps) {
                 className="flex-1 bg-transparent border-none text-white px-4 py-3 outline-none placeholder:text-white/40 text-lg"
                 disabled={isSearching}
               />
-              <button
+              <motion.button
                 type="submit"
+                whileHover={{ scale: query.trim() && !isSearching ? 1.02 : 1 }}
+                whileTap={{ scale: query.trim() && !isSearching ? 0.96 : 1 }}
                 disabled={!query.trim() || isSearching}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center space-x-2"
+                className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center space-x-2 shadow-lg"
               >
                 {isSearching ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -120,7 +122,7 @@ export function AiSearch({ onBack }: AiSearchProps) {
                     <span className="hidden sm:inline">Search</span>
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </form>
 
@@ -159,7 +161,9 @@ export function AiSearch({ onBack }: AiSearchProps) {
                     <h3 className="text-sm font-medium text-white/60 uppercase tracking-wider mb-4">Sources</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {sources.map((source, idx) => (
-                        <a
+                        <motion.a
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
                           key={idx}
                           href={source.uri}
                           target="_blank"
@@ -171,7 +175,7 @@ export function AiSearch({ onBack }: AiSearchProps) {
                           </div>
                           <span className="flex-1 text-sm text-white/80 truncate">{source.title}</span>
                           <ExternalLink className="w-4 h-4 text-white/30 group-hover:text-white/60" />
-                        </a>
+                        </motion.a>
                       ))}
                     </div>
                   </div>

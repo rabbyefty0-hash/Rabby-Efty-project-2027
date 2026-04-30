@@ -61,7 +61,8 @@ export const SystemStatus = ({
   user,
   isAuthLoading,
   handleSignIn,
-  handleLogout
+  handleLogout,
+  onBack
 }: {
   isVpnConnected: boolean;
   theme: 'light' | 'dark';
@@ -70,6 +71,7 @@ export const SystemStatus = ({
   isAuthLoading: boolean;
   handleSignIn: () => void;
   handleLogout: () => void;
+  onBack?: () => void;
 }) => {
   const [uptime, setUptime] = useState('00:00:00');
   const [startTime] = useState(Date.now() - performance.now());

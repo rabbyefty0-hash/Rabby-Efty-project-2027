@@ -78,6 +78,43 @@ export async function generateAgenda(files: UploadedFile[]): Promise<MeetingAgen
   return JSON.parse(text) as MeetingAgenda;
 }
 
+export async function processAiWebSearch(query: string): Promise<{ text: string; sources: { title: string; uri: string }[] }> {
+  try {
+    const ai = getGeminiClient();
+    const prompt = `You are a helpful AI assistant integrated into a web browser.
+The user's query is: "${query}"
+Provide a concise, direct answer or summary. If there are code snippets or factual answers, provide them directly. Use markdown. Do not hallucinate. Provide exactly what they are asking for in a well-formatted response.`;
+    
+    // Attempt standard search grounding
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.1-pro-preview',
+      contents: prompt,
+      config: {
+        tools: [{ googleSearch: {} }],
+      }
+    });
+
+    const text = response.text || "No response generated.";
+    
+    // Extract sources if applicable
+    const sources: { title: string, uri: string }[] = [];
+    const sourceChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (sourceChunks) {
+      sourceChunks.forEach((chunk: any) => {
+        if (chunk.web?.uri && chunk.web?.title) {
+          if (!sources.some(s => s.uri === chunk.web.uri)) {
+            sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+          }
+        }
+      });
+    }
+
+    return { text, sources };
+  } catch (err: any) {
+    throw new Error(err.message || 'Error occurred during AI search');
+  }
+}
+
 let chatHistory: Content[] = [];
 let currentFiles: UploadedFile[] = [];
 let currentAgenda: MeetingAgenda | null = null;

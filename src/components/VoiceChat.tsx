@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface VoiceChatProps {
   isVpnConnected?: boolean;
+  onBack?: () => void;
 }
 
-export function VoiceChat({ isVpnConnected }: VoiceChatProps) {
+export function VoiceChat({ isVpnConnected, onBack }: VoiceChatProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState('');

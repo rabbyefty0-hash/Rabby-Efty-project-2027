@@ -53,7 +53,7 @@ export function Notes({ onBack }: NotesProps) {
   };
 
   return (
-    <div 
+    <motion.div 
       className="flex flex-col h-full bg-yellow-50 text-gray-900"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -153,6 +153,6 @@ export function Notes({ onBack }: NotesProps) {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -4,7 +4,7 @@ import { Apps } from './components/Apps';
 import { StatusBar } from './components/StatusBar';
 import { UploadedFile, ChatMessage } from './types';
 import { initChatSession, sendChatMessage, restoreChatHistory } from './services/gemini';
-import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube } from 'lucide-react';
+import { Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube, Bell, Search, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged, User } from './firebase';
 import { populateDummyData } from './lib/populate';
@@ -21,7 +21,6 @@ import { MusicApp } from './components/Music';
 import { LockScreen } from './components/LockScreen';
 
 const Chatbot = lazy(() => import('./components/Chatbot').then(m => ({ default: m.Chatbot })));
-const ImageGenerator = lazy(() => import('./components/ImageGenerator').then(m => ({ default: m.ImageGenerator })));
 const VideoGenerator = lazy(() => import('./components/VideoGenerator').then(m => ({ default: m.VideoGenerator })));
 const VoiceChat = lazy(() => import('./components/VoiceChat').then(m => ({ default: m.VoiceChat })));
 const Vpn = lazy(() => import('./components/Vpn').then(m => ({ default: m.Vpn })));
@@ -44,11 +43,13 @@ const CameraApp = lazy(() => import('./components/CameraApp').then(m => ({ defau
 const ContactsApp = lazy(() => import('./components/ContactsApp').then(m => ({ default: m.default })));
 const YouTubeApp = lazy(() => import('./components/YouTubeApp').then(m => ({ default: m.default })));
 const AiSearch = lazy(() => import('./components/AiSearch').then(m => ({ default: m.AiSearch })));
+const ImageGenerator = lazy(() => import('./components/ImageGenerator').then(m => ({ default: m.ImageGenerator })));
 
 type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search';
 
 export const APPS = [
-  { id: 'image', name: 'Image', icon: ImageIcon, color: 'text-indigo-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'ai-search', name: 'AI Search', icon: Search, color: 'text-orange-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'image', name: 'AI Image', icon: Wand2, color: 'text-purple-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'video', name: 'Video', icon: Video, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'voice', name: 'Voice', icon: Mic, color: 'text-rose-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'vpn', name: 'VPN', icon: Shield, color: 'text-teal-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -76,6 +77,7 @@ export const APPS = [
   { id: 'clock', name: 'Clock', icon: Clock, color: 'text-black', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'contacts', name: 'Contacts', icon: Users, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'music', name: 'Music', icon: Music, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'text-red-600', bg: 'bg-gradient-to-br from-white to-gray-100' },
 ];
 
 function AppContent() {
@@ -113,6 +115,23 @@ function AppContent() {
 
   const [isDynamicIslandExpanded, setIsDynamicIslandExpanded] = useState(false);
   const [dynamicIslandContent, setDynamicIslandContent] = useState<React.ReactNode>(null);
+  const [notification, setNotification] = useState<{title: string; message: string; icon?: any; id: string} | null>(null);
+
+  useEffect(() => {
+    // Expose notification function globally
+    (window as any).showNotification = (title: string, message: string, iconUrl?: string) => {
+      const id = Date.now().toString();
+      setNotification({ title, message, icon: iconUrl, id });
+      setIsDynamicIslandExpanded(true);
+      setTimeout(() => {
+        setNotification((current) => current?.id === id ? null : current);
+        setIsDynamicIslandExpanded(false);
+      }, 4000);
+    };
+    
+    // Notifications now triggered at unlock!
+  }, []);
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('theme');
     return (saved as 'light' | 'dark') || 'dark';
@@ -293,6 +312,12 @@ function AppContent() {
     setActiveTab(tab);
     setHistory(prev => [...prev, tab]);
     setForwardHistory([]);
+    if (tab !== 'home' && tab !== 'apps' && tab !== 'status') {
+      const appInfo = APPS.find(a => a.id === tab);
+      if (appInfo && (window as any).showNotification) {
+        (window as any).showNotification(appInfo.name, "Application opened");
+      }
+    }
   };
 
   const handleBack = () => {
@@ -329,7 +354,15 @@ function AppContent() {
       <LockScreen 
         wallpaperUrl={wallpaperUrl} 
         iconShape={iconShape} 
-        onUnlock={() => setIsLocked(false)} 
+        onUnlock={() => {
+          setIsLocked(false);
+          if ((window as any).showNotification) {
+             // Delay to allow unlock animation to finish
+             setTimeout(() => {
+                (window as any).showNotification("System Ready", "Welcome back, Rabby Efty");
+             }, 600);
+          }
+        }} 
       />
     );
   }
@@ -614,22 +647,36 @@ function AppContent() {
                 exit={{ opacity: 0, scale: 0.9, y: -10 }}
                 className="w-full h-full flex items-center justify-between px-5"
               >
-                <div className="flex items-center space-x-4">
-                  <div className={`w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 ${getIconShapeClass()} flex items-center justify-center shadow-lg border border-white/20`}>
-                    <Sparkles className="w-6 h-6 text-white" />
+                {notification ? (
+                  <div className="flex items-center space-x-4 w-full">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                      {notification.icon ? <img src={notification.icon} className="w-6 h-6 rounded-full" /> : <Bell className="w-5 h-5"/>}
+                    </div>
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                      <span className="text-white font-bold text-sm truncate">{notification.title}</span>
+                      <span className="text-white/60 text-xs truncate">{notification.message}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
-                    <span className="text-sm font-bold text-white tracking-tight">System Active</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end space-y-1">
-                  <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-                    <span className="text-[9px] font-black text-green-400 tracking-widest uppercase">Secure</span>
-                  </div>
-                  <span className="text-[9px] text-white/30 font-medium tracking-tighter">v17.0.1 PRO</span>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-center space-x-4">
+                      <div className={`w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 ${getIconShapeClass()} flex items-center justify-center shadow-lg border border-white/20`}>
+                        <Sparkles className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">꧁Rᴀʙʙʏ Eғᴛʏ꧂</span>
+                        <span className="text-sm font-bold text-white tracking-tight">System Active</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end space-y-1">
+                      <div className="flex items-center space-x-2 bg-green-500/20 px-2 py-1 rounded-full border border-green-500/30">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                        <span className="text-[9px] font-black text-green-400 tracking-widest uppercase">Secure</span>
+                      </div>
+                      <span className="text-[9px] text-white/30 font-medium tracking-tighter">v17.0.1 PRO</span>
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -683,14 +730,27 @@ function AppContent() {
           ) : (
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              initial={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
+              animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
+              transition={{ type: "spring", stiffness: 300, damping: 25, mass: 0.8 }}
               className="h-full w-full bg-black/40 backdrop-blur-xl overflow-hidden flex flex-col will-change-transform"
             >
               <div className="flex-1 overflow-y-auto relative">
-                <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-white/50" /></div>}>
+                <Suspense fallback={
+                  <motion.div 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    className="flex flex-col items-center justify-center h-full gap-3"
+                  >
+                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}>
+                      <Loader2 className="w-8 h-8 text-white/50" />
+                    </motion.div>
+                    <motion.p animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }} className="text-white/40 text-[11px] font-medium tracking-widest uppercase">
+                      Loading
+                    </motion.p>
+                  </motion.div>
+                }>
                   {activeTab === 'image' && <ImageGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'video' && <VideoGenerator isVpnConnected={isVpnConnected} onBack={handleBack} />}
                   {activeTab === 'voice' && <VoiceChat isVpnConnected={isVpnConnected} onBack={handleBack} />}
@@ -757,34 +817,49 @@ function AppContent() {
       {/* Bottom Navigation Bar */}
       <div className="absolute bottom-0 left-0 right-0 z-50 pointer-events-none flex flex-col items-center justify-end pb-6">
         <AnimatePresence>
-          {(activeTab === 'home' || activeTab === 'apps' || activeTab === 'status' || activeTab === 'settings') && (
+          {(activeTab === 'home' || activeTab === 'apps' || activeTab === 'ai-search' || activeTab === 'status' || activeTab === 'settings') && (
             <motion.div 
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               className="max-w-[320px] sm:max-w-md w-full mx-auto glass-dock liquid-glass p-3.5 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl mb-4"
             >
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={() => handleNavigate('home')}
                 className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
               >
                 <HomeIcon className="w-6 h-6" />
                 <span className="text-[10px] font-medium">Home</span>
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={() => handleNavigate('apps')}
                 className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'apps' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
               >
                 <LayoutGrid className="w-6 h-6" />
                 <span className="text-[10px] font-medium">Apps</span>
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => handleNavigate('ai-search')}
+                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'ai-search' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
+              >
+                <Search className="w-6 h-6" />
+                <span className="text-[10px] font-medium">AI Search</span>
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.9 }}
                 onClick={() => handleNavigate('settings')}
                 className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'settings' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
               >
                 <Settings className="w-6 h-6" />
                 <span className="text-[10px] font-medium">Settings</span>
-              </button>
+              </motion.button>
             </motion.div>
           )}
         </AnimatePresence>

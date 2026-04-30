@@ -92,7 +92,7 @@ export function Weather({ onBack }: WeatherProps) {
   }, []);
 
   return (
-    <div 
+    <motion.div 
       className="flex flex-col h-full bg-gradient-to-b from-blue-400 to-blue-600 text-white"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -173,6 +173,6 @@ export function Weather({ onBack }: WeatherProps) {
           </div>
         </motion.div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }

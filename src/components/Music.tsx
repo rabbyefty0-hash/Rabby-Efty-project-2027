@@ -253,7 +253,7 @@ export function MusicApp({ onBack }: MusicProps) {
   };
 
   return (
-    <div 
+    <motion.div 
       className="flex flex-col h-full bg-zinc-950 text-white relative"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -519,6 +519,6 @@ export function MusicApp({ onBack }: MusicProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

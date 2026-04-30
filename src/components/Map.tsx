@@ -97,7 +97,7 @@ export function MapsApp({ onBack }: MapsProps) {
   };
 
   return (
-    <div 
+    <motion.div 
       className="flex flex-col h-full bg-gray-100 text-gray-900 relative"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
@@ -179,6 +179,6 @@ export function MapsApp({ onBack }: MapsProps) {
           <Navigation className="w-6 h-6" />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }

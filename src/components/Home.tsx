@@ -229,11 +229,13 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
                   key={app.id}
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92 }}
                   transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
                   onClick={() => onNavigate(app.id)}
                   className="flex flex-col items-center space-y-1.5 group flex-shrink-0 w-[60px] sm:w-[70px]"
                 >
-                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
+                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon relative overflow-hidden`}>
                     <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
                     <app.icon className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
                   </div>
@@ -246,16 +248,18 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
 
         {/* Home Screen Apps Grid */}
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-y-6 gap-x-2 sm:gap-x-4 mb-8 mt-4 px-1 sm:px-2">
-          {APPS.filter(app => ['camera', 'gallery', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 'settings', 'calculator', 'weather', 'calendar', 'clock', 'music', 'maps', 'contacts', 'downloader'].includes(app.id)).map((app, index) => (
+          {APPS.filter(app => ['camera', 'gallery', 'image', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 'settings', 'calculator', 'weather', 'calendar', 'clock', 'music', 'maps', 'contacts', 'downloader'].includes(app.id)).map((app, index) => (
             <motion.button
               key={app.id}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.92 }}
               transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
               onClick={() => onNavigate(app.id)}
               className="flex flex-col items-center space-y-1.5 group"
             >
-              <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon transition-all duration-300 group-hover:scale-105 group-active:scale-95 relative overflow-hidden`}>
+              <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon relative overflow-hidden`}>
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
                 <app.icon className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
               </div>

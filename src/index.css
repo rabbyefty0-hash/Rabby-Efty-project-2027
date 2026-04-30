@@ -130,6 +130,15 @@ body {
   background-attachment: fixed;
   color: #ffffff;
   transition: background-color 0.5s ease, color 0.5s ease;
+  cursor: none; /* Custom Cursor Feature */
+}
+
+a, button, [role="button"], .cursor-pointer {
+  cursor: none !important;
+}
+
+input, textarea {
+  cursor: text !important;
 }
 
 body.light {

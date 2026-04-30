@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings, Plus, Shield, Search, Menu, MoreVertical, ShieldAlert, RefreshCw, Triangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings, Plus, Shield, Search, Menu, MoreVertical, ShieldAlert, RefreshCw, Triangle, Sparkles, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { processAiWebSearch } from '../services/gemini';
+import Markdown from 'react-markdown';
 
 interface BrowserProps {
   isVpnConnected: boolean;
@@ -19,6 +21,10 @@ interface BrowserTab {
   isSuspended: boolean;
   isLoading: boolean;
   loadError: boolean;
+  aiSummary?: string | null;
+  aiSources?: { title: string; uri: string }[] | null;
+  isAiLoading?: boolean;
+  aiQuery?: string | null;
 }
 
 export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserProps) {
@@ -207,8 +213,36 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
     }
   };
 
+  const handleAiSearch = async () => {
+    if (!activeTab.inputUrl.trim()) return;
+    
+    updateActiveTab({ 
+      isAiLoading: true, 
+      aiSummary: null, 
+      aiSources: null,
+      aiQuery: activeTab.inputUrl 
+    });
+
+    try {
+      const response = await processAiWebSearch(activeTab.inputUrl);
+      updateActiveTab({ 
+        aiSummary: response.text, 
+        aiSources: response.sources.length > 0 ? response.sources : null
+      });
+    } catch (e: any) {
+      updateActiveTab({ aiSummary: `*Error:* ${e.message}` });
+    } finally {
+      updateActiveTab({ isAiLoading: false });
+    }
+  };
+
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeTab.inputUrl.startsWith('ai:')) {
+      updateActiveTab({ inputUrl: activeTab.inputUrl.substring(3).trim() });
+      setTimeout(handleAiSearch, 10);
+      return;
+    }
     navigateTo(activeTab.inputUrl);
   };
 
@@ -359,19 +393,29 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
             value={activeTab.inputUrl}
             onChange={(e) => updateActiveTab({ inputUrl: e.target.value })}
             className="flex-1 bg-transparent text-[15px] outline-none text-zinc-900 placeholder:text-zinc-400 min-w-0"
-            placeholder="Search or type URL"
+            placeholder="Search or ask AI..."
           />
           {activeTab.isLoading ? (
             <RotateCw className="w-4 h-4 text-zinc-400 animate-spin shrink-0 ml-2" />
           ) : (
-            <button type="button" onClick={() => {
-              updateActiveTab({ isLoading: true, loadError: false, isSuspended: false });
-              const currentUrl = activeTab.url;
-              updateActiveTab({ url: null });
-              setTimeout(() => updateActiveTab({ url: currentUrl }), 10);
-            }} className="p-1 hover:bg-zinc-200 rounded-full shrink-0 ml-1">
-              <RefreshCw className="w-4 h-4 text-zinc-500" />
-            </button>
+            <div className="flex items-center shrink-0 ml-1">
+              <button 
+                type="button" 
+                onClick={(e) => { e.stopPropagation(); handleAiSearch(); }} 
+                className="p-1 hover:bg-orange-100 rounded-full text-orange-500 mr-1 transition-colors" 
+                title="Ask AI"
+              >
+                <Sparkles className="w-4 h-4" />
+              </button>
+              <button type="button" onClick={() => {
+                updateActiveTab({ isLoading: true, loadError: false, isSuspended: false });
+                const currentUrl = activeTab.url;
+                updateActiveTab({ url: null });
+                setTimeout(() => updateActiveTab({ url: currentUrl }), 10);
+              }} className="p-1 hover:bg-zinc-200 rounded-full transition-colors">
+                <RefreshCw className="w-4 h-4 text-zinc-500" />
+              </button>
+            </div>
           )}
         </form>
         
@@ -546,6 +590,82 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
               </div>
             )}
             
+            <AnimatePresence>
+              {(tab.isAiLoading || tab.aiSummary) && activeTabId === tab.id && (
+                <motion.div 
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                  className="absolute bottom-0 left-0 right-0 max-h-[80%] bg-white/90 backdrop-blur-xl z-30 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t border-white overflow-hidden flex flex-col"
+                >
+                  <div className="flex flex-col bg-gradient-to-r from-orange-100/50 to-orange-50/50 p-4 border-b border-orange-100/50 shrink-0">
+                     <div className="flex items-center justify-between">
+                       <div className="flex items-center gap-2">
+                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center shadow-sm">
+                           <Sparkles className="w-4 h-4 text-white" />
+                         </div>
+                         <h3 className="font-bold text-zinc-800 flex items-center gap-2">
+                           AI Summary
+                           {tab.isAiLoading && <Loader2 className="w-3 h-3 text-orange-500 animate-spin" />}
+                         </h3>
+                       </div>
+                       <motion.button 
+                         whileHover={{ scale: 1.1 }}
+                         whileTap={{ scale: 0.9 }}
+                         onClick={() => updateActiveTab({ aiSummary: null, isAiLoading: false, aiSources: null })}
+                         className="p-1.5 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
+                       >
+                         <X className="w-5 h-5 text-zinc-500" />
+                       </motion.button>
+                     </div>
+                     {tab.aiQuery && (
+                       <p className="mt-2 text-sm text-zinc-500 font-medium px-1 line-clamp-1 flex items-center gap-2">
+                         <Search className="w-3.5 h-3.5" />
+                         "{tab.aiQuery}"
+                       </p>
+                     )}
+                  </div>
+                  
+                  <div className="p-5 overflow-y-auto flex-1 overscroll-contain">
+                    {tab.isAiLoading && !tab.aiSummary ? (
+                      <div className="flex flex-col items-center justify-center py-8 gap-3">
+                        <div className="w-8 h-8 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
+                        <p className="text-sm font-medium text-zinc-400 animate-pulse">Generating summary...</p>
+                      </div>
+                    ) : tab.aiSummary ? (
+                      <div className="prose prose-sm max-w-none text-zinc-700 prose-headings:text-zinc-800 prose-a:text-orange-600">
+                        <Markdown>{tab.aiSummary}</Markdown>
+                        
+                        {tab.aiSources && tab.aiSources.length > 0 && (
+                          <div className="mt-6 pt-4 border-t border-zinc-100">
+                            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-3">Sources</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {tab.aiSources.map((source, i) => (
+                                <motion.button 
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.96 }}
+                                  key={i}
+                                  onClick={() => {
+                                    updateActiveTab({ aiSummary: null, isAiLoading: false, aiSources: null });
+                                    navigateTo(source.uri);
+                                  }}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 hover:bg-orange-50 rounded-lg text-xs font-medium text-zinc-600 hover:text-orange-600 transition-colors max-w-full shadow-sm"
+                                >
+                                  <Globe className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{source.title || source.uri}</span>
+                                </motion.button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {!tab.isSuspended ? (
               <iframe 
                 src={tab.url || undefined} 

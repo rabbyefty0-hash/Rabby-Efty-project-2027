@@ -111,36 +111,29 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
           if (!fileResponse.ok) throw new Error('Network response was not ok');
           const blob = await fileResponse.blob();
           
-          // Convert blob to base64 for VFS
-          const reader = new FileReader();
-          reader.readAsDataURL(blob);
-          reader.onloadend = async () => {
-            const base64data = reader.result as string;
-            
-            // Save to VFS
-            const filename = `download_${Date.now()}.${format.type.toLowerCase()}`;
-            await addNode({
-              id: generateId(),
-              name: filename,
-              type: 'file',
-              content: base64data,
-              parentId: 'root',
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              size: blob.size,
-              mimeType: blob.type || (format.isAudio ? 'audio/mp3' : 'video/mp4')
-            });
+          // Save to VFS
+          const filename = `download_${Date.now()}.${format.type.toLowerCase()}`;
+          await addNode({
+            id: generateId(),
+            name: filename,
+            type: 'file',
+            data: blob,
+            parentId: 'root',
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+            size: blob.size,
+            mimeType: blob.type || (format.isAudio ? 'audio/mp3' : 'video/mp4')
+          });
 
-            // Trigger local download using the blob
-            const blobUrl = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(blobUrl);
-          };
+          // Trigger local download using the blob
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
         } catch (fetchErr) {
           console.warn("Could not fetch blob for VFS, falling back to direct download link", fetchErr);
           // Fallback to direct download link if CORS prevents fetching
