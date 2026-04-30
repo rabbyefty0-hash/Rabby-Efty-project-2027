@@ -602,14 +602,22 @@ function AppContent() {
         <motion.div 
           layout
           onClick={(e) => {
+            if (e.detail === 3) {
+              setIsLocked(true);
+              setIsDynamicIslandExpanded(false);
+              return;
+            }
+
             // Prevent expanding if clicking the back button
             if ((e.target as HTMLElement).closest('.back-btn')) return;
             
-            if (isDynamicIslandExpanded) {
-              handleNavigate('status');
-              setIsDynamicIslandExpanded(false);
-            } else {
-              setIsDynamicIslandExpanded(true);
+            if (e.detail === 1) {
+              if (isDynamicIslandExpanded) {
+                handleNavigate('status');
+                setIsDynamicIslandExpanded(false);
+              } else {
+                setIsDynamicIslandExpanded(true);
+              }
             }
           }}
           className={`dynamic-island liquid-glass ${isDynamicIslandExpanded ? 'w-72 h-20' : (activeTab !== 'home' ? 'w-[140px]' : 'w-[126px]')} h-[36px] cursor-pointer ios-shadow relative`}

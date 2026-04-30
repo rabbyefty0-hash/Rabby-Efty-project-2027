@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X, SkipBack, SkipForward } from 'lucide-react';
+import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAllFiles, VFSNode, verifyPermission, addNode } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
@@ -17,6 +17,12 @@ export function MusicApp({ onBack }: MusicProps) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Background Audio State
+  const [backgroundTrack, setBackgroundTrack] = useState<{ url: string, name: string } | null>(null);
+  const [isBackgroundPlaying, setIsBackgroundPlaying] = useState(false);
+  const [backgroundVolume, setBackgroundVolume] = useState(0.5);
+  const bgAudioRef = useRef<HTMLAudioElement>(null);
 
   // AI State
   const [prompt, setPrompt] = useState('');
@@ -295,8 +301,71 @@ export function MusicApp({ onBack }: MusicProps) {
 
       <div className="flex-1 overflow-y-auto p-4 pb-40 custom-scrollbar">
         {activeTab === 'library' ? (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center mb-4">
+          <div className="space-y-4">
+            <div className="bg-zinc-900/40 p-4 rounded-3xl border border-white/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold flex items-center gap-2 text-sm text-white/80">
+                  <Volume2 className="w-4 h-4" /> Background Ambience
+                </h3>
+                {backgroundTrack && (
+                  <button 
+                    onClick={() => setIsBackgroundPlaying(!isBackgroundPlaying)}
+                    className="p-1.5 hover:bg-white/10 rounded-full text-white/70 transition-colors"
+                  >
+                    {isBackgroundPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  value={backgroundTrack?.name || ""}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    if (!val) {
+                      setBackgroundTrack(null);
+                      setIsBackgroundPlaying(false);
+                      return;
+                    }
+                    const node = audioFiles.find(n => n.id === val);
+                    if (node) {
+                      const url = await getFileUrl(node);
+                      if (url) {
+                        setBackgroundTrack({ url, name: node.name });
+                        setIsBackgroundPlaying(true);
+                        if (bgAudioRef.current) {
+                          bgAudioRef.current.src = url;
+                          bgAudioRef.current.play();
+                        }
+                      }
+                    }
+                  }}
+                  className="flex-1 bg-black/40 border border-white/10 rounded-xl p-2.5 text-xs focus:outline-none focus:border-white/20 text-white/80 cursor-pointer appearance-none"
+                >
+                  <option value="">None</option>
+                  {audioFiles.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+                {backgroundTrack && (
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={backgroundVolume}
+                    onChange={(e) => {
+                      const vol = parseFloat(e.target.value);
+                      setBackgroundVolume(vol);
+                      if (bgAudioRef.current) bgAudioRef.current.volume = vol;
+                    }}
+                    className="w-20 accent-pink-500"
+                    title="Background Volume"
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center px-1 mb-2">
               <h2 className="text-lg font-bold">Your Tracks</h2>
               <label className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full text-xs font-medium cursor-pointer transition-colors">
                 <Upload className="w-3.5 h-3.5" />
@@ -336,24 +405,26 @@ export function MusicApp({ onBack }: MusicProps) {
                 <p className="text-sm mt-2 text-center">Upload files in the File Manager app<br/>to see them here.</p>
               </div>
             ) : (
-              audioFiles.map((file, idx) => (
-                <div 
-                  key={file.id}
-                  onClick={() => handlePlayNode(file, idx)}
-                  className="flex items-center gap-4 p-3 bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer transition-colors"
-                >
-                  <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center text-pink-500">
-                    <MusicIcon className="w-6 h-6" />
+              <div className="space-y-2">
+                {audioFiles.map((file, idx) => (
+                  <div 
+                    key={file.id}
+                    onClick={() => handlePlayNode(file, idx)}
+                    className="flex items-center gap-4 p-3 bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer transition-colors"
+                  >
+                    <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center text-pink-500">
+                      <MusicIcon className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{file.name}</p>
+                      <p className="text-xs text-white/50">{new Date(file.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white">
+                      {currentTrack?.name === file.name && isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 ml-1 fill-current" />}
+                    </button>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{file.name}</p>
-                    <p className="text-xs text-white/50">{new Date(file.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white">
-                    {currentTrack?.name === file.name && isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 ml-1 fill-current" />}
-                  </button>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         ) : (
@@ -519,6 +590,13 @@ export function MusicApp({ onBack }: MusicProps) {
           </motion.div>
         )}
       </AnimatePresence>
+      <audio
+        ref={bgAudioRef}
+        loop
+        onPlay={() => setIsBackgroundPlaying(true)}
+        onPause={() => setIsBackgroundPlaying(false)}
+        className="hidden"
+      />
     </motion.div>
   );
 }

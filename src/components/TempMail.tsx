@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, RefreshCw, Copy, Trash2, Inbox, ChevronLeft, ShieldCheck } from 'lucide-react';
+import { Mail, RefreshCw, Copy, Trash2, Inbox, ChevronLeft, ShieldCheck, Check } from 'lucide-react';
 
 interface TempMailProps {
   isVpnConnected?: boolean;
@@ -107,9 +107,12 @@ export function TempMail({ isVpnConnected, onBack }: TempMailProps) {
     return () => clearInterval(interval);
   }, [email]);
 
+  const [copied, setCopied] = useState(false);
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(email);
-    alert('Email copied to clipboard!');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -157,10 +160,10 @@ export function TempMail({ isVpnConnected, onBack }: TempMailProps) {
             <button 
               onClick={copyToClipboard}
               disabled={!email}
-              className="p-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors disabled:opacity-50"
+              className={`p-3 text-white rounded-xl transition-colors disabled:opacity-50 ${copied ? 'bg-green-500 hover:bg-green-600' : 'bg-indigo-500 hover:bg-indigo-600'}`}
               title="Copy"
             >
-              <Copy className="w-5 h-5" />
+              {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
             </button>
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
