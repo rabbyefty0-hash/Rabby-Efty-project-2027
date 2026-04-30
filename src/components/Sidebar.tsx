@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { UploadCloud, FileText, X, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { UploadedFile } from '@/src/types';
@@ -13,8 +13,21 @@ interface SidebarProps {
 }
 
 export function Sidebar({ files, onFilesAdded, onRemoveFile, onGenerateAgenda, isGenerating }: SidebarProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsDragging(false);
     const droppedFiles = Array.from(e.dataTransfer.files);
     processFiles(droppedFiles);
   }, []);
@@ -27,7 +40,34 @@ export function Sidebar({ files, onFilesAdded, onRemoveFile, onGenerateAgenda, i
   }, []);
 
   const processFiles = (newFiles: File[]) => {
-    const promises = newFiles.map((file) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/csv',
+      'text/plain',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+      'image/svg+xml'
+    ];
+    
+    const validFiles = newFiles.filter(file => {
+      let mimeType = file.type;
+      if (!mimeType) {
+        if (file.name.endsWith('.txt')) mimeType = 'text/plain';
+        else if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
+        else if (file.name.endsWith('.csv')) mimeType = 'text/csv';
+        else if (file.name.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      }
+      return allowedTypes.includes(mimeType) || mimeType.startsWith('image/');
+    });
+
+    if (validFiles.length < newFiles.length) {
+      alert(`Some files were ignored. Only PDF, DOCX, CSV, TXT, and Images are supported.`);
+    }
+
+    const promises = validFiles.map((file) => {
       return new Promise<UploadedFile>((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -37,6 +77,7 @@ export function Sidebar({ files, onFilesAdded, onRemoveFile, onGenerateAgenda, i
             if (file.name.endsWith('.txt')) mimeType = 'text/plain';
             else if (file.name.endsWith('.pdf')) mimeType = 'application/pdf';
             else if (file.name.endsWith('.csv')) mimeType = 'text/csv';
+            else if (file.name.endsWith('.docx')) mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
             else mimeType = 'text/plain'; // Fallback
           }
           resolve({
@@ -50,7 +91,9 @@ export function Sidebar({ files, onFilesAdded, onRemoveFile, onGenerateAgenda, i
     });
 
     Promise.all(promises).then((processedFiles) => {
-      onFilesAdded(processedFiles);
+      if (processedFiles.length > 0) {
+        onFilesAdded(processedFiles);
+      }
     });
   };
 
@@ -63,9 +106,15 @@ export function Sidebar({ files, onFilesAdded, onRemoveFile, onGenerateAgenda, i
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className="border-2 border-dashed border-white/60 bg-white/20 rounded-[2rem] p-8 text-center hover:bg-white/30 transition-colors cursor-pointer relative group shadow-sm backdrop-blur-md"
+          className={cn(
+            "border-2 border-dashed rounded-[2rem] p-8 text-center transition-all cursor-pointer relative shadow-sm backdrop-blur-md",
+            isDragging
+              ? "border-indigo-500 bg-indigo-500/10 scale-[1.02]"
+              : "border-white/60 bg-white/20 hover:bg-white/30 hover:scale-[1.01]"
+          )}
         >
           <input
             type="file"
@@ -73,12 +122,17 @@ export function Sidebar({ files, onFilesAdded, onRemoveFile, onGenerateAgenda, i
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             onChange={handleFileInput}
           />
-          <div className="flex flex-col items-center justify-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-white/50 flex items-center justify-center group-hover:bg-white/60 transition-colors shadow-sm">
-              <UploadCloud className="w-6 h-6 text-indigo-600" />
+          <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+            <div className={cn(
+              "w-12 h-12 rounded-full flex items-center justify-center transition-colors shadow-sm",
+              isDragging ? "bg-indigo-500/20" : "bg-white/50"
+            )}>
+              <UploadCloud className={cn("w-6 h-6", isDragging ? "text-indigo-600" : "text-indigo-500")} />
             </div>
-            <p className="text-sm font-medium text-zinc-900">Click or drag files here</p>
-            <p className="text-xs text-zinc-600">Supports PDF, DOCX, TXT, Images</p>
+            <p className={cn("text-sm font-medium", isDragging ? "text-indigo-600" : "text-zinc-900")}>
+              {isDragging ? 'Drop files here' : 'Drop documents here or click to browse'}
+            </p>
+            <p className="text-xs text-zinc-600">Supports PDF, DOCX, CSV, TXT, Images</p>
           </div>
         </div>
 

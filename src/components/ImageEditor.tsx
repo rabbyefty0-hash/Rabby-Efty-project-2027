@@ -8,7 +8,7 @@ interface ImageEditorProps {
   imageUrl: string;
   onClose: () => void;
   onSave: (editedDataUrl: string) => void;
-  onUseAsReference: (dataUrl: string) => void;
+  onUseAsReference: (dataUrl: string, prompt?: string) => void;
 }
 
 export function ImageEditor({ imageUrl, onClose, onSave, onUseAsReference }: ImageEditorProps) {
@@ -16,6 +16,9 @@ export function ImageEditor({ imageUrl, onClose, onSave, onUseAsReference }: Ima
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<Crop>();
   const imgRef = useRef<HTMLImageElement>(null);
+  
+  // AI Prompt
+  const [aiPrompt, setAiPrompt] = useState('');
   
   // Filters
   const [brightness, setBrightness] = useState(100);
@@ -71,7 +74,7 @@ export function ImageEditor({ imageUrl, onClose, onSave, onUseAsReference }: Ima
 
   const handleUseAi = () => {
     const finalImage = applyFiltersToCanvas();
-    onUseAsReference(finalImage);
+    onUseAsReference(finalImage, aiPrompt);
   };
 
   return (
@@ -202,8 +205,29 @@ export function ImageEditor({ imageUrl, onClose, onSave, onUseAsReference }: Ima
                 <Wand2 className="w-6 h-6 text-indigo-400 shrink-0" />
                 <p className="text-xs text-indigo-200/80 leading-relaxed font-medium">Use this image as a reference for AI Generation. Your current crop and filter settings will be applied.</p>
               </div>
+
+              <div className="space-y-2">
+                <p className="text-[10px] text-white/70 font-bold uppercase tracking-widest px-1">Quick Enhancements</p>
+                <div className="grid grid-cols-2 gap-2">
+                   <button onClick={() => setAiPrompt('Upscale and enhance details, 4k high resolution')} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs text-center border border-white/10 text-white transition-colors">Upscale</button>
+                   <button onClick={() => setAiPrompt('Convert to high quality anime style')} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs text-center border border-white/10 text-white transition-colors">Anime Style</button>
+                   <button onClick={() => setAiPrompt('Convert to highly detailed pixel art')} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs text-center border border-white/10 text-white transition-colors">Pixel Art</button>
+                   <button onClick={() => setAiPrompt('Convert to hyper-realistic photorealistic style')} className="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs text-center border border-white/10 text-white transition-colors">Photoreal</button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[10px] text-white/70 font-bold uppercase tracking-widest px-1">Custom Enhancement</p>
+                <textarea 
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="Or describe how you want to enhance this image..."
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-xs text-white placeholder:text-white/30 h-24 focus:outline-none focus:border-indigo-500/50 resize-none font-mono"
+                />
+              </div>
+
               <button onClick={handleUseAi} className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl font-bold tracking-widest uppercase transition-colors shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2">
-                <Wand2 className="w-4 h-4" /> Send to Generator
+                <Wand2 className="w-4 h-4" /> Load to Generator
               </button>
             </div>
           )}

@@ -38,8 +38,12 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>(() => {
-    const saved = localStorage.getItem('generatedImages');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('generatedImages');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -59,7 +63,20 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
   ];
 
   useEffect(() => {
-    localStorage.setItem('generatedImages', JSON.stringify(generatedImages));
+    try {
+      localStorage.setItem('generatedImages', JSON.stringify(generatedImages));
+    } catch (e) {
+      console.warn('Storage quota exceeded');
+      try {
+         localStorage.setItem('generatedImages', JSON.stringify(generatedImages.slice(0, 3)));
+      } catch (e2) {
+         try {
+           localStorage.setItem('generatedImages', JSON.stringify(generatedImages.slice(0, 1)));
+         } catch {
+           console.error('Failed to save any images to local storage');
+         }
+      }
+    }
   }, [generatedImages]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,42 +129,60 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
 
       setStatus('Visioning your concept...');
       
-      const contentsParts: any[] = [];
       if (referenceImage) {
-        contentsParts.push({ inlineData: { data: referenceImage.base64, mimeType: referenceImage.mimeType } });
-      }
-      contentsParts.push({ text: finalPrompt });
+        const contentsParts: any[] = [
+           { inlineData: { data: referenceImage.base64, mimeType: referenceImage.mimeType } },
+           { text: finalPrompt }
+        ];
 
-      const response = await ai.models.generateContent({
-         model: 'gemini-2.5-flash-image',
-         contents: {
-           parts: contentsParts
-         },
-         config: {
-           imageConfig: {
-             aspectRatio: aspectRatio
-           }
-         }
-      });
+        try {
+          const response = await ai.models.generateContent({
+             model: 'gemini-2.5-flash-image',
+             contents: { parts: contentsParts },
+             config: {
+               imageConfig: { aspectRatio: aspectRatio }
+             }
+          });
 
-      let found = false;
-      if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) {
-             const base64Image = part.inlineData.data;
-             const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
-             setGeneratedImages(prev => [dataUrl, ...prev]);
-             found = true;
-             
-             const fileName = `efty-gen-${Date.now()}.jpg`;
-             console.log(`Generated and saved: ${fileName}`);
-             break;
+          let found = false;
+          if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+              if (part.inlineData) {
+                 const base64Image = part.inlineData.data;
+                 const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
+                 setGeneratedImages(prev => [dataUrl, ...prev]);
+                 found = true;
+                 console.log(`Generated and saved image.`);
+                 break;
+              }
+            }
           }
+          if (!found) throw new Error("The AI failed to render your vision. Try refinement.");
+        } catch (imgError: any) {
+           if (imgError.message?.includes('permission denied') || imgError.message?.includes('403') || imgError.status === 403 || String(imgError).includes('403')) {
+              throw new Error('Image editing requires a paid Gemini key. Please remove the reference image to use the free generation, or add a paid API Key.');
+           }
+           throw imgError;
         }
-      }
-      
-      if (!found) {
-         throw new Error("The AI failed to render your vision. Try refinement.");
+      } else {
+        const response = await ai.models.generateImages({
+          model: 'imagen-3.0-generate-002',
+          prompt: finalPrompt,
+          config: {
+            numberOfImages: 1,
+            outputMimeType: "image/jpeg",
+            aspectRatio: aspectRatio,
+          }
+        });
+        
+        if (response.generatedImages && response.generatedImages.length > 0) {
+          const base64Image = response.generatedImages[0].image.imageBytes;
+          const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+          setGeneratedImages(prev => [dataUrl, ...prev]);
+          console.log(`Generated and saved image.`);
+        } else {
+          throw new Error("The AI failed to render your vision. Try refinement.");
+        }
       }
 
     } catch (err: any) {
@@ -450,7 +485,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                setGeneratedImages(newImages);
                setEditingImageIndex(null);
             }}
-            onUseAsReference={(dataUrl) => {
+            onUseAsReference={(dataUrl, customPrompt) => {
                const matches = dataUrl.match(/^data:(image\/[a-zA-Z0-9]+);base64,(.+)$/);
                if (matches && matches.length === 3) {
                  setReferenceImage({
@@ -458,6 +493,9 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                    base64: matches[2],
                    url: dataUrl
                  });
+                 if (customPrompt) {
+                   setPrompt(customPrompt);
+                 }
                  setEditingImageIndex(null);
                  window.scrollTo({ top: 0, behavior: 'smooth' });
                }
