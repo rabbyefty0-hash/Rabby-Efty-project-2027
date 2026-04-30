@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageEditor } from './ImageEditor';
+import { cn } from '@/src/lib/utils';
 
 declare global {
   interface Window {
@@ -52,6 +53,9 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
   
   const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '3:4' | '4:3'>('1:1');
   const [selectedStyle, setSelectedStyle] = useState('none');
+  
+  const [downloadDialog, setDownloadDialog] = useState<{ isOpen: boolean, imageIndex: number | null }>({ isOpen: false, imageIndex: null });
+  const [downloadOptions, setDownloadOptions] = useState<{ filename: string, format: string }>({ filename: 'Efty-AI-Creation', format: 'image/jpeg' });
   
   const STYLES = [
     { id: 'none', name: 'Original', icon: Sparkles, color: 'from-blue-400 to-indigo-500' },
@@ -194,13 +198,39 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
     }
   };
 
-  const downloadImage = (url: string) => {
+  const triggerDownload = (url: string, filename: string) => {
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Efty-AI-${Date.now()}.jpg`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleDownload = () => {
+    if (downloadDialog.imageIndex === null) return;
+    const imgUrl = generatedImages[downloadDialog.imageIndex];
+    if (!imgUrl) return;
+
+    if (downloadOptions.format !== 'image/jpeg') {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const extension = downloadOptions.format === 'image/webp' ? 'webp' : 'png';
+          const newDataUrl = canvas.toDataURL(downloadOptions.format);
+          triggerDownload(newDataUrl, `${downloadOptions.filename || 'Efty-AI-Creation'}.${extension}`);
+        }
+      };
+      img.src = imgUrl;
+    } else {
+      triggerDownload(imgUrl, `${downloadOptions.filename || 'Efty-AI-Creation'}.jpg`);
+    }
+    setDownloadDialog({ isOpen: false, imageIndex: null });
   };
   
   return (
@@ -434,7 +464,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                                 <motion.button 
                                   whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
-                                  onClick={() => downloadImage(img)}
+                                  onClick={() => setDownloadDialog({ isOpen: true, imageIndex: idx })}
                                   className="px-4 py-3 bg-white/10 backdrop-blur-3xl rounded-[1.5rem] border border-white/20 hover:bg-white/20 transition-all flex items-center gap-2 text-xs"
                                 >
                                   <Download className="w-4 h-4 text-white" />
@@ -503,6 +533,76 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
           />
         )}
       </AnimatePresence>
+      <AnimatePresence>
+        {downloadDialog.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#111] border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-6 shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setDownloadDialog({ isOpen: false, imageIndex: null })}
+                className="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5 text-white/50 hover:text-white transition-colors" />
+              </button>
+
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold tracking-tight text-white/90">Save Image</h3>
+                <p className="text-sm text-white/50">Specify filename and format.</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-widest text-white/50 font-bold ml-1">Filename</label>
+                  <input
+                    type="text"
+                    value={downloadOptions.filename}
+                    onChange={(e) => setDownloadOptions(prev => ({ ...prev, filename: e.target.value }))}
+                    className="w-full bg-black/50 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-indigo-500/50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase tracking-widest text-white/50 font-bold ml-1">Format</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['image/jpeg', 'image/png', 'image/webp'].map((format) => (
+                      <button
+                        key={format}
+                        onClick={() => setDownloadOptions(prev => ({ ...prev, format }))}
+                        className={cn(
+                          "px-3 py-2 text-xs rounded-xl font-medium transition-all border",
+                          downloadOptions.format === format 
+                            ? "bg-indigo-500 text-white border-indigo-400" 
+                            : "bg-white/5 text-white/50 border-white/10 hover:bg-white/10 hover:text-white"
+                        )}
+                      >
+                        {format.split('/')[1].toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleDownload}
+                  className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl font-bold tracking-widest uppercase transition-colors shadow-lg shadow-indigo-500/25 mt-4"
+                >
+                  Download
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }
