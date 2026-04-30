@@ -67,7 +67,6 @@ const MOCK_VIDEOS: YouTubeVideo[] = [
 
 export default function YouTubeApp({ onBack }: YouTubeAppProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchMode, setIsSearchMode] = useState(false);
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -244,7 +243,6 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     searchVideos(searchQuery);
-    setIsSearchMode(false);
   };
 
   const getVideoId = (video: YouTubeVideo) => {
@@ -259,52 +257,54 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       className="flex flex-col h-full bg-[#0f0f0f] text-white"
     >
       {/* Top Bar */}
-      {!isSearchMode ? (
-        <div className="flex items-center justify-between px-4 py-3 bg-[#0f0f0f] sticky top-0 z-20">
-          <div className="flex items-center gap-1 cursor-pointer" onClick={onBack}>
-            <ChevronLeft className="w-6 h-6 mr-1" />
-            <Youtube className="w-8 h-8 text-red-600" />
-            <span className="text-xl font-bold tracking-tighter text-white">YouTube</span>
-          </div>
-          <div className="flex items-center gap-5 text-white">
-            <Cast className="w-5 h-5" />
-            <Bell className="w-5 h-5" />
-            <Search className="w-5 h-5 cursor-pointer" onClick={() => setIsSearchMode(true)} />
-            <div className="w-7 h-7 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold">R</div>
-          </div>
+      <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 bg-[#0f0f0f] sticky top-0 z-20">
+        <div className="flex items-center gap-1 cursor-pointer shrink-0" onClick={onBack}>
+          <ChevronLeft className="w-6 h-6 text-white" />
+          <Youtube className="w-8 h-8 text-red-600 hidden sm:block" />
         </div>
-      ) : (
-        <div className="flex items-center gap-3 px-4 py-2 bg-[#0f0f0f] sticky top-0 z-20">
-          <button onClick={() => setIsSearchMode(false)} className="p-2 -ml-2 text-white rounded-full hover:bg-white/10">
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <form onSubmit={handleSearch} className="flex-1 relative">
-            <input 
-              type="text" 
-              placeholder="Search YouTube" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-              className="w-full bg-[#272727] text-white rounded-full py-2 pl-4 pr-10 focus:outline-none"
-            />
-            {searchQuery && (
+        <div className="flex-1 flex justify-center max-w-2xl mx-auto">
+          <form onSubmit={handleSearch} className="flex flex-1 relative items-center">
+            <div className="flex w-full overflow-hidden rounded-full border border-white/20 bg-transparent focus-within:border-blue-500">
+              <div className="hidden sm:flex items-center pl-4 text-white/50 bg-[#121212]">
+                <Search className="w-4 h-4" />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Search" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#121212] sm:bg-[#121212] text-white py-2 pl-4 sm:pl-2 pr-10 focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-[4.5rem] sm:right-[5.5rem] top-0 bottom-0 flex items-center justify-center text-gray-400 hover:text-white z-10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
               <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-0 bottom-0 flex items-center justify-center text-gray-400 hover:text-white"
+                type="submit"
+                className="px-4 sm:px-6 bg-white/10 text-white/70 hover:text-white border-l border-white/20 flex items-center justify-center transition-colors"
               >
-                <X className="w-4 h-4" />
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
-            )}
+            </div>
+            <button type="button" className="p-2 ml-2 bg-white/10 text-white rounded-full shrink-0 hover:bg-white/20">
+              <Mic className="w-5 h-5" />
+            </button>
           </form>
-          <button className="p-2 bg-[#272727] rounded-full">
-            <Mic className="w-5 h-5" />
-          </button>
         </div>
-      )}
+        <div className="hidden sm:flex items-center gap-4 text-white shrink-0 ml-2">
+          <Cast className="w-5 h-5" />
+          <Bell className="w-5 h-5" />
+          <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold">R</div>
+        </div>
+      </div>
 
       {/* Categories */}
-      {!isSearchMode && (
+      {(
         <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-3 px-4 py-2 sticky top-[60px] bg-[#0f0f0f] z-10 border-b border-white/10">
           <button className="p-1.5 bg-[#272727] rounded-md shrink-0"><Compass className="w-5 h-5" /></button>
           <div className="w-[1px] h-6 bg-white/20 self-center mx-1 shrink-0" />

@@ -25,12 +25,45 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
   const [prompt, setPrompt] = useState('');
   const [generatedText, setGeneratedText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRefining, setIsRefining] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [tone, setTone] = useState('professional');
   const [length, setLength] = useState('medium');
-  const [showFilters, setShowFilters] = useState(false);
+
+  const refinePrompt = async () => {
+    if (!prompt.trim()) return;
+    
+    setIsRefining(true);
+    setError(null);
+
+    try {
+      if (!process.env.GEMINI_API_KEY) {
+        throw new Error('Gemini API key is not configured.');
+      }
+
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      const fullPrompt = `Make the following prompt more specific and actionable for a text generation AI. Return ONLY the refined prompt without any preamble or explanation:\n\n${prompt}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: fullPrompt,
+      });
+
+      if (response.text) {
+        setPrompt(response.text.trim());
+      } else {
+        throw new Error('Failed to refine prompt.');
+      }
+    } catch (err: any) {
+      console.error('Error refining prompt:', err);
+      setError(err.message || 'An error occurred while refining the prompt.');
+    } finally {
+      setIsRefining(false);
+    }
+  };
 
   const generateText = async () => {
     if (!prompt.trim()) return;
@@ -118,58 +151,50 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="What should we write about today?"
-                className="w-full h-32 bg-white/5 border border-white/5 rounded-[1rem] p-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500/50 shadow-inner resize-none custom-scrollbar"
+                className="w-full h-32 bg-white/5 border border-white/5 rounded-[1rem] p-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500/50 shadow-inner resize-none custom-scrollbar pb-12"
               />
+              <button
+                onClick={refinePrompt}
+                disabled={!prompt.trim() || isRefining || isGenerating}
+                className="absolute bottom-3 right-3 px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isRefining ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                Refine Prompt
+              </button>
             </div>
             
-            <AnimatePresence>
-              {showFilters && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 pt-2 overflow-hidden"
-                >
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase ml-1">Tone</label>
-                    <div className="flex flex-wrap gap-2">
-                      {TONES.map(t => (
-                        <button
-                          key={t.id}
-                          onClick={() => setTone(t.id)}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-colors border ${tone === t.id ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/5 text-white/60 border-transparent hover:bg-white/10'}`}
-                        >
-                          {t.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase ml-1">Length</label>
-                    <div className="flex gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/5 w-fit">
-                      {LENGTHS.map(l => (
-                        <button
-                          key={l.id}
-                          onClick={() => setLength(l.id)}
-                          className={`px-4 py-1.5 text-[10px] font-bold rounded-xl transition-all duration-300 ${length === l.id ? 'bg-white/10 text-white shadow-lg border border-white/20' : 'text-white/30 hover:text-white/60'}`}
-                        >
-                          {l.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase ml-1">Tone</label>
+                <div className="flex flex-wrap gap-2">
+                  {TONES.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTone(t.id)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-colors border ${tone === t.id ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-white/5 text-white/60 border-transparent hover:bg-white/10'}`}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-white/40 tracking-widest uppercase ml-1">Length</label>
+                <div className="flex gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/5 w-fit">
+                  {LENGTHS.map(l => (
+                    <button
+                      key={l.id}
+                      onClick={() => setLength(l.id)}
+                      className={`px-4 py-1.5 text-[10px] font-bold rounded-xl transition-all duration-300 ${length === l.id ? 'bg-white/10 text-white shadow-lg border border-white/20' : 'text-white/30 hover:text-white/60'}`}
+                    >
+                      {l.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
             
             <div className="flex items-center gap-3 pt-2">
-              <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className={`w-[3.5rem] h-[3.5rem] shrink-0 transition-colors rounded-[1rem] flex items-center justify-center border border-white/5 shadow-inner ${showFilters ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 hover:bg-white/10 text-white/50'}`}
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </button>
-              
               <button 
                 onClick={generateText}
                 disabled={!prompt.trim() || isGenerating}

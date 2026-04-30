@@ -673,7 +673,9 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
                 className="w-full h-full border-none bg-white"
                 title={`Browser View ${tab.id}`}
                 onLoad={() => updateTab(tab.id, { isLoading: false, loadError: false })}
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowFullScreen
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50 p-6 text-center">
