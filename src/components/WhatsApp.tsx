@@ -427,6 +427,23 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
 
       nextPlayTimeRef.current = playbackCtxRef.current.currentTime;
 
+      let userMediaStream: MediaStream;
+      try {
+        userMediaStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { 
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1 
+          } 
+        });
+      } catch (err: any) {
+        console.error("Mic error:", err);
+        setCallState('idle');
+        setIsAiCall(false);
+        return;
+      }
+
       const sessionPromise = ai.live.connect({
         model: "gemini-3.1-flash-live-preview",
         config: {
@@ -439,22 +456,14 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
         callbacks: {
           onopen: async () => {
             try {
-              const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                  echoCancellation: true,
-                  noiseSuppression: true,
-                  autoGainControl: true,
-                  channelCount: 1 
-                } 
-              });
-              streamRef.current = stream;
-              setLocalStream(stream);
+              streamRef.current = userMediaStream;
+              setLocalStream(userMediaStream);
               
               audioCtxRef.current = new AudioContext({ sampleRate: 16000 });
               if (audioCtxRef.current.state === 'suspended') {
                 await audioCtxRef.current.resume();
               }
-              const source = audioCtxRef.current.createMediaStreamSource(stream);
+              const source = audioCtxRef.current.createMediaStreamSource(userMediaStream);
               const processor = audioCtxRef.current.createScriptProcessor(2048, 1, 1);
               
               const session = await sessionPromise;
@@ -481,7 +490,7 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
               
               setCallState('connected');
             } catch (err) {
-              console.error("Mic error:", err);
+              console.error("Live setup error:", err);
               endAiCall();
             }
           },

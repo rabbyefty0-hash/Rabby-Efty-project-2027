@@ -119,6 +119,57 @@ export function VoiceChat({ isVpnConnected, onBack }: VoiceChatProps) {
         ? `\n\nPrevious conversation history:\n${transcript.slice(-20).map(t => `${t.role === 'user' ? 'User' : 'You'}: ${t.text}`).join('\n')}`
         : '';
 
+      let userMediaStream: MediaStream;
+      try {
+        try {
+          userMediaStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true
+            },
+            video: isCameraEnabled ? { facingMode: 'environment' } : false
+          });
+        } catch (err: any) {
+          console.warn("Initial getUserMedia failed, trying fallback:", err);
+          if (isCameraEnabled) {
+            try {
+              // Fallback to any camera and simpler audio constraints
+              userMediaStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: true,
+                video: true
+              });
+            } catch (fallbackErr) {
+              console.error("Fallback getUserMedia failed:", fallbackErr);
+              throw fallbackErr;
+            }
+          } else {
+            try {
+              // Fallback to simpler audio constraints
+              userMediaStream = await navigator.mediaDevices.getUserMedia({ 
+                audio: true,
+                video: false
+              });
+            } catch (fallbackErr) {
+              console.error("Fallback audio getUserMedia failed:", fallbackErr);
+              throw fallbackErr;
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error("Mic/Camera error:", err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError("Permission denied. Please allow camera and microphone access in your browser settings.");
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setError("No microphone or camera found on this device.");
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          setError("Camera or microphone is already in use by another application.");
+        } else {
+          setError(`Could not access media devices: ${err.message || err.name || 'Unknown error'}`);
+        }
+        setIsConnecting(false);
+        return;
+      }
+
       const sessionPromise = ai.live.connect({
         model: "gemini-3.1-flash-live-preview",
         config: {
@@ -133,52 +184,17 @@ export function VoiceChat({ isVpnConnected, onBack }: VoiceChatProps) {
         callbacks: {
           onopen: async () => {
             try {
-              let stream: MediaStream;
-              try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                  audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true
-                  },
-                  video: isCameraEnabled ? { facingMode: 'environment' } : false
-                });
-              } catch (err: any) {
-                console.warn("Initial getUserMedia failed, trying fallback:", err);
-                if (isCameraEnabled) {
-                  try {
-                    // Fallback to any camera and simpler audio constraints
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                      audio: true,
-                      video: true
-                    });
-                  } catch (fallbackErr) {
-                    console.error("Fallback getUserMedia failed:", fallbackErr);
-                    throw fallbackErr;
-                  }
-                } else {
-                  try {
-                    // Fallback to simpler audio constraints
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                      audio: true,
-                      video: false
-                    });
-                  } catch (fallbackErr) {
-                    console.error("Fallback audio getUserMedia failed:", fallbackErr);
-                    throw fallbackErr;
-                  }
-                }
-              }
-              streamRef.current = stream;
+              streamRef.current = userMediaStream;
               
               if (isCameraEnabled && videoRef.current) {
-                videoRef.current.srcObject = stream;
+                videoRef.current.srcObject = userMediaStream;
               }
 
               audioCtxRef.current = new AudioContext({ sampleRate: 16000 });
               if (audioCtxRef.current.state === 'suspended') {
                 await audioCtxRef.current.resume();
               }
-              const source = audioCtxRef.current.createMediaStreamSource(stream);
+              const source = audioCtxRef.current.createMediaStreamSource(userMediaStream);
               const processor = audioCtxRef.current.createScriptProcessor(2048, 1, 1);
               
               const session = await sessionPromise;
@@ -225,16 +241,8 @@ export function VoiceChat({ isVpnConnected, onBack }: VoiceChatProps) {
               setIsConnected(true);
               setIsConnecting(false);
             } catch (err: any) {
-              console.error("Mic/Camera error:", err);
-              if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                setError("Permission denied. Please allow camera and microphone access in your browser settings.");
-              } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-                setError("No microphone or camera found on this device.");
-              } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-                setError("Camera or microphone is already in use by another application.");
-              } else {
-                setError(`Could not access media devices: ${err.message || err.name || 'Unknown error'}`);
-              }
+              console.error("Live API setup error:", err);
+              setError("Failed to initialize audio streaming.");
               disconnect();
             }
           },

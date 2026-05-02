@@ -32,7 +32,7 @@ export function AiSearch({ onBack }: AiSearchProps) {
       
       const response = await ai.models.generateContent({
         model: 'gemini-3.1-pro-preview',
-        contents: `Search the web and provide a comprehensive, up-to-date answer for: "${query}"`,
+        contents: `Search the web and provide a comprehensive, detailed, and up-to-date answer for: "${query}". Provide a highly detailed summary. Cite your sources directly in the text using inline clickable markdown links (e.g., [Source Title](URL)) for further reading.`,
         tools: [{ googleSearch: {} }]
       } as any);
 
