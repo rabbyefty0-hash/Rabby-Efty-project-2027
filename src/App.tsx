@@ -84,8 +84,8 @@ export const APPS = [
 ];
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [history, setHistory] = useState<Tab[]>(['home']);
+  const [activeTab, setActiveTab] = useState<Tab>('youtube');
+  const [history, setHistory] = useState<Tab[]>(['youtube']);
   const [forwardHistory, setForwardHistory] = useState<Tab[]>([]);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);

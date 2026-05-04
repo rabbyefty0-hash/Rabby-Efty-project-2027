@@ -173,6 +173,22 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
   }, [activeTab.isLoading, activeTabId]);
 
   const getEffectiveUrl = (targetUrl: string, proxyEnabled: boolean) => {
+    try {
+      if (targetUrl.includes('youtube.com/watch') || targetUrl.includes('youtu.be/')) {
+        let videoId = '';
+        if (targetUrl.includes('youtube.com/watch')) {
+          const urlObj = new URL(targetUrl);
+          videoId = urlObj.searchParams.get('v') || '';
+        } else if (targetUrl.includes('youtu.be/')) {
+          const urlObj = new URL(targetUrl);
+          videoId = urlObj.pathname.slice(1);
+        }
+        if (videoId) {
+          return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        }
+      }
+    } catch (e) {}
+
     if (proxyEnabled && !targetUrl.includes('google.com/search?igu=1') && !targetUrl.includes('google.com')) {
       // Use a proxy that strips X-Frame-Options and bypasses CORS
       return `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
@@ -689,7 +705,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
                 className="w-full h-full border-none bg-white"
                 title={`Browser View ${tab.id}`}
                 onLoad={() => updateTab(tab.id, { isLoading: false, loadError: false })}
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation allow-downloads"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
               />
