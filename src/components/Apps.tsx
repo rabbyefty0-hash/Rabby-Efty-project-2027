@@ -167,7 +167,7 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
       <div className="flex-1 overflow-y-auto relative z-10 custom-scrollbar h-full w-full">
         <div className="max-w-5xl mx-auto relative px-6">
           {/* Sticky Search Bar */}
-          <div className="sticky top-0 z-40 pt-14 pb-4 bg-zinc-950/80 backdrop-blur-xl -mx-6 px-6 mb-6">
+          <div className="sticky top-0 z-40 pt-safe-island pb-4 bg-zinc-950/80 backdrop-blur-xl -mx-6 px-6 mb-6">
             <div className="relative z-10">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
               <input
@@ -259,7 +259,7 @@ export function Apps({ onNavigate, isVpnConnected, setIsVpnConnected }: AppsProp
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="absolute inset-0 z-[60] bg-zinc-900/80 backdrop-blur-3xl flex flex-col"
           >
-            <div className="pt-14 pb-6 px-6 flex justify-between items-center">
+            <div className="pt-safe-island pb-6 px-6 flex justify-between items-center">
               <h2 className="text-2xl font-semibold text-white tracking-tight">{expandedCategory}</h2>
               <button 
                 onClick={() => setExpandedCategory(null)} 

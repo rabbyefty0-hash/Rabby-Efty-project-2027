@@ -4,7 +4,7 @@ import { Apps } from './components/Apps';
 import { StatusBar } from './components/StatusBar';
 import { UploadedFile, ChatMessage } from './types';
 import { initChatSession, sendChatMessage, restoreChatHistory } from './services/gemini';
-import { FileText, Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube, Bell, Search, Wand2 } from 'lucide-react';
+import { FileText, Menu, ChevronRight, Share, Battery, Wifi, Signal, Image as ImageIcon, Video, Mic, Sparkles, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Home as HomeIcon, ArrowLeft, LogOut, User as UserIcon, Swords, Activity, Sun, Moon, CreditCard, Mail, Loader2, MessageCircle, Phone, Folder, LayoutGrid, Settings, Palette, TrendingUp, Calculator, StickyNote, CloudRain, Calendar, Map, Camera, Clock, Users, Music, Youtube, Bell, Search, Wand2, Play, Pause, FastForward, Rewind } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged, User } from './firebase';
 import { populateDummyData } from './lib/populate';
@@ -84,8 +84,8 @@ export const APPS = [
 ];
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<Tab>('youtube');
-  const [history, setHistory] = useState<Tab[]>(['youtube']);
+  const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [history, setHistory] = useState<Tab[]>(['home']);
   const [forwardHistory, setForwardHistory] = useState<Tab[]>([]);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -163,6 +163,21 @@ function AppContent() {
   const [isDynamicIslandExpanded, setIsDynamicIslandExpanded] = useState(false);
   const [dynamicIslandContent, setDynamicIslandContent] = useState<React.ReactNode>(null);
   const [notification, setNotification] = useState<{title: string; message: string; icon?: any; id: string} | null>(null);
+  const [islandData, setIslandData] = useState<any>(null);
+
+  useEffect(() => {
+    const handleIslandUpdate = (e: any) => {
+      if (e.detail.tab === activeTab || e.detail.force) {
+        setIslandData(e.detail);
+      }
+    };
+    window.addEventListener('island-update', handleIslandUpdate);
+    return () => window.removeEventListener('island-update', handleIslandUpdate);
+  }, [activeTab]);
+
+  useEffect(() => {
+    setIslandData(null);
+  }, [activeTab]);
 
   useEffect(() => {
     // Expose notification function globally
@@ -667,7 +682,7 @@ function AppContent() {
       </AnimatePresence>
 
       {/* Dynamic Island */}
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto flex flex-col items-center">
+      <div className="absolute top-safe-island left-1/2 -translate-x-1/2 z-[100] pointer-events-auto flex flex-col items-center">
         <motion.div 
           layout
           onClick={(e) => {
@@ -732,6 +747,54 @@ function AppContent() {
                     <div className="flex flex-col flex-1 overflow-hidden">
                       <span className="text-white font-bold text-sm truncate">{notification.title}</span>
                       <span className="text-white/60 text-xs truncate">{notification.message}</span>
+                    </div>
+                  </div>
+                ) : islandData?.type === 'music' ? (
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                      <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                        {islandData.cover ? <img src={islandData.cover} className="w-full h-full object-cover rounded-xl" /> : <Music className="w-5 h-5 text-white/50" />}
+                      </div>
+                      <div className="flex flex-col truncate">
+                        <span className="text-white font-bold text-sm truncate">{islandData.title}</span>
+                        <span className="text-white/60 text-xs truncate">{islandData.subtitle}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3 shrink-0 ml-2">
+                       <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('island-action', { detail: { action: 'music-prev' }})); }} className="text-white/70 hover:text-white">
+                         <Rewind className="w-4 h-4" />
+                       </button>
+                       <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('island-action', { detail: { action: 'music-toggle' }})); }} className="w-8 h-8 rounded-full bg-white text-black flex items-center justify-center">
+                         {islandData.isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                       </button>
+                       <button onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('island-action', { detail: { action: 'music-next' }})); }} className="text-white/70 hover:text-white">
+                         <FastForward className="w-4 h-4" />
+                       </button>
+                    </div>
+                  </div>
+                ) : activeTab === 'vpn' ? (
+                  <div className="flex items-center space-x-4 w-full">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                      <Globe className="w-5 h-5"/>
+                    </div>
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                      <span className="text-white font-bold text-sm truncate">VPN Status</span>
+                      <span className="text-white/60 text-xs truncate">{isVpnConnected ? 'Connected & Secured' : 'Disconnected'}</span>
+                    </div>
+                    <div className="flex items-center space-x-2 shrink-0 ml-2">
+                       <button onClick={(e) => { e.stopPropagation(); setIsVpnConnected(!isVpnConnected); }} className={`w-12 h-6 rounded-full transition-colors relative ${isVpnConnected ? 'bg-emerald-500' : 'bg-white/20'}`}>
+                         <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${isVpnConnected ? 'left-7' : 'left-1'}`} />
+                       </button>
+                    </div>
+                  </div>
+                ) : islandData?.type === 'downloader' ? (
+                  <div className="flex items-center space-x-4 w-full">
+                    <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                      <DownloadCloud className="w-5 h-5"/>
+                    </div>
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                      <span className="text-white font-bold text-sm truncate">{islandData?.title || 'Video Downloader'}</span>
+                      <span className="text-cyan-400/80 text-xs truncate animate-pulse">{islandData?.subtitle || 'Idle'}</span>
                     </div>
                   </div>
                 ) : (

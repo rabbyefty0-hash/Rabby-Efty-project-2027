@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ChevronLeft, Play, Youtube, AlertCircle, Loader2, X, ThumbsUp, ThumbsDown, Share2, Download, Bookmark, MessageSquare, MoreVertical, Cast, Bell, Home, Compass, PlaySquare, MonitorPlay, Mic } from 'lucide-react';
+import { Search, ChevronLeft, Play, Youtube, AlertCircle, Loader2, X, ThumbsUp, ThumbsDown, Share2, Download, Bookmark, MessageSquare, MoreVertical, Cast, Bell, Home, Compass, PlaySquare, MonitorPlay, Mic, Pause, Volume2, VolumeX, Maximize } from 'lucide-react';
+import YouTube from 'react-youtube';
 
 interface YouTubeAppProps {
   onBack: () => void;
@@ -76,18 +77,122 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
   const [comments, setComments] = useState<any[]>([]);
   const [relatedVideos, setRelatedVideos] = useState<YouTubeVideo[]>([]);
   const [isLoadingExtra, setIsLoadingExtra] = useState(false);
+  
+  // Custom Player State
+  const [playerInfo, setPlayerInfo] = useState<any>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(100);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const apiKey = (import.meta as any).env.VITE_YOUTUBE_API_KEY;
 
   useEffect(() => {
-    fetchTrending();
-  }, []);
+    if (!searchQuery.trim()) {
+      fetchTrending();
+    }
+  }, [searchQuery]);
 
   useEffect(() => {
     if (selectedVideo) {
       fetchExtraData(selectedVideo);
+    } else {
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      setPlayerInfo(null);
+      setIsPlaying(false);
+    }
+    return () => {
+      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     }
   }, [selectedVideo]);
+
+  const onPlayerReady = (event: any) => {
+    setPlayerInfo(event.target);
+    setDuration(event.target.getDuration());
+    event.target.setVolume(volume);
+    setIsPlaying(true);
+  };
+
+  const onPlayerStateChange = (event: any) => {
+    setIsPlaying(event.data === 1); // 1 is playing state in YT API
+    if (event.data === 1) {
+      if (!progressIntervalRef.current) {
+        progressIntervalRef.current = setInterval(() => {
+          setProgress(event.target.getCurrentTime());
+        }, 1000);
+      }
+    } else {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+    }
+  };
+
+  const togglePlay = () => {
+    if (playerInfo) {
+      if (isPlaying) {
+        playerInfo.pauseVideo();
+      } else {
+        playerInfo.playVideo();
+      }
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value);
+    setProgress(time);
+    if (playerInfo) {
+      playerInfo.seekTo(time, true);
+    }
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const vol = parseInt(e.target.value);
+    setVolume(vol);
+    if (vol > 0) setIsMuted(false);
+    if (playerInfo) {
+      playerInfo.setVolume(vol);
+      if (vol > 0) playerInfo.unMute();
+      else {
+        playerInfo.mute();
+        setIsMuted(true);
+      }
+    }
+  };
+
+  const toggleMute = () => {
+    if (playerInfo) {
+      if (isMuted) {
+        playerInfo.unMute();
+        playerInfo.setVolume(volume || 50);
+        setVolume(volume || 50);
+      } else {
+        playerInfo.mute();
+        setVolume(0);
+      }
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying) setShowControls(false);
+    }, 3000);
+  };
 
   const mapInvidiousToYouTubeVideo = (item: any): YouTubeVideo => ({
     id: { videoId: item.videoId },
@@ -153,7 +258,10 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
   };
 
   const searchVideos = async (query: string) => {
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      fetchTrending();
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -245,7 +353,11 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    searchVideos(searchQuery);
+    if (!searchQuery.trim()) {
+      fetchTrending();
+    } else {
+      searchVideos(searchQuery);
+    }
   };
 
   const getVideoId = (video: YouTubeVideo) => {
@@ -260,7 +372,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       className="flex flex-col h-full bg-[#0f0f0f] text-white"
     >
       {/* Top Bar */}
-      <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 bg-[#0f0f0f] sticky top-0 z-20">
+      <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 pt-safe-island bg-[#0f0f0f] sticky top-0 z-20">
         <div className="flex items-center gap-1 cursor-pointer shrink-0" onClick={onBack}>
           <ChevronLeft className="w-6 h-6 text-white" />
           <Youtube className="w-8 h-8 text-red-600 hidden sm:block" />
@@ -308,7 +420,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
 
       {/* Categories */}
       {(
-        <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-3 px-4 py-2 sticky top-[60px] bg-[#0f0f0f] z-10 border-b border-white/10">
+        <div className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] gap-3 px-4 py-2 bg-[#0f0f0f] z-10 border-b border-white/10 shrink-0">
           <button className="p-1.5 bg-[#272727] rounded-md shrink-0"><Compass className="w-5 h-5" /></button>
           <div className="w-[1px] h-6 bg-white/20 self-center mx-1 shrink-0" />
           {CATEGORIES.map(cat => (
@@ -395,23 +507,128 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
         exit={{ opacity: 0, y: 50 }}
         className="flex flex-col h-full bg-[#0f0f0f] text-white z-30 absolute inset-0"
       >
-        <div className="w-full aspect-video bg-black sticky top-0 z-40 relative group shrink-0">
-          <button 
-            onClick={() => setSelectedVideo(null)} 
-            className="absolute top-4 left-4 z-50 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <iframe
-            width="100%"
-            height="100%"
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1`}
-            title={selectedVideo.snippet.title}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            className="w-full h-full"
-          ></iframe>
+        <div 
+          className="w-full aspect-video bg-black sticky top-0 z-40 relative group shrink-0"
+          onMouseMove={handleMouseMove}
+          onClick={handleMouseMove}
+          onTouchStart={handleMouseMove}
+          onMouseLeave={() => isPlaying && setShowControls(false)}
+        >
+          <div className="w-full h-full pointer-events-none">
+            <YouTube 
+              videoId={videoId} 
+              opts={{
+                width: '100%',
+                height: '100%',
+                playerVars: {
+                  autoplay: 1,
+                  controls: 0,
+                  disablekb: 1,
+                  modestbranding: 1,
+                  rel: 0,
+                  showinfo: 0,
+                  iv_load_policy: 3,
+                  fs: 0,
+                  playsinline: 1
+                }
+              }}
+              onReady={onPlayerReady}
+              onStateChange={onPlayerStateChange}
+              className="w-full h-full pointer-events-auto"
+              iframeClassName="w-full h-full"
+            />
+          </div>
+
+          <AnimatePresence>
+            {showControls && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/40 flex flex-col justify-between pointer-events-none z-10"
+              >
+                {/* Top bar with back button */}
+                <div className="p-4 pt-safe-island flex justify-between items-start bg-gradient-to-b from-black/60 to-transparent pointer-events-auto">
+                  <button 
+                    onClick={() => setSelectedVideo(null)} 
+                    className="p-2 text-white hover:bg-white/20 rounded-full transition-colors"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Center play/pause */}
+                <div className="flex-1 flex items-center justify-center pointer-events-auto">
+                  <button 
+                    onClick={togglePlay}
+                    className="w-16 h-16 rounded-full bg-black/50 hover:bg-red-600/90 text-white flex items-center justify-center backdrop-blur-md transition-all duration-300 hover:scale-105"
+                  >
+                    {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 ml-1 fill-current" />}
+                  </button>
+                </div>
+
+                {/* Bottom controls */}
+                <div className="p-4 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-auto flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <button onClick={togglePlay} className="text-white hover:text-red-500 transition-colors">
+                        {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
+                      </button>
+                      
+                      <div className="flex items-center gap-2 group/volume">
+                        <button onClick={toggleMute} className="text-white hover:text-red-500 transition-colors">
+                          {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                        </button>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="100" 
+                          value={isMuted ? 0 : volume}
+                          onChange={handleVolumeChange}
+                          className="w-0 opacity-0 group-hover/volume:w-20 group-hover/volume:opacity-100 transition-all duration-300 h-1 bg-white/30 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-xs font-mono ml-2 opacity-80">
+                        <span>{formatTime(progress)}</span>
+                        <span>/</span>
+                        <span>{formatTime(duration)}</span>
+                      </div>
+                    </div>
+                    
+                    <button className="text-white hover:text-red-500 transition-colors">
+                      <Maximize className="w-5 h-5" />
+                    </button>
+                  </div>
+                  
+                  <div className="w-full flex items-center h-4 group/seek relative mt-1">
+                    {/* Scrub bar track visual */}
+                    <div className="absolute left-0 right-0 h-1 group-hover/seek:h-1.5 transition-all bg-white/30 rounded-full overflow-hidden pointer-events-none">
+                      {/* Played portion */}
+                      <div 
+                        className="absolute top-0 left-0 bottom-0 bg-red-600 transition-all duration-100"
+                        style={{ width: `${(progress / (duration || 1)) * 100}%` }}
+                      />
+                    </div>
+                    {/* Invisible range input for interaction */}
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max={duration || 100} 
+                      value={progress}
+                      onChange={handleSeek}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 m-0 p-0"
+                    />
+                    {/* Scrub handle visual (CSS thumb) */}
+                    <div 
+                      className="absolute w-3 h-3 bg-red-600 rounded-full opacity-0 group-hover/seek:opacity-100 transition-opacity pointer-events-none top-1/2 -translate-y-1/2 -ml-1.5"
+                      style={{ left: `${(progress / (duration || 1)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div id="player-scroll-container" className="flex-1 overflow-y-auto">

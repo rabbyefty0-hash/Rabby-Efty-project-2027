@@ -52,7 +52,7 @@ export function StatusBar({ theme, isVpnConnected }: StatusBarProps) {
   }, []);
 
   return (
-    <div className="absolute top-2 left-0 right-0 h-[36px] z-[60] flex items-center justify-between px-8 pointer-events-none">
+    <div className="absolute top-2 left-0 right-0 h-[36px] z-[60] flex items-center justify-between px-8 pointer-events-none pwa-hide-status-bar">
       <div className={`text-[14px] font-bold tracking-tight flex items-center space-x-1 ${theme === 'light' ? 'text-zinc-900' : 'text-white'}`}>
         <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
         {isVpnConnected && (

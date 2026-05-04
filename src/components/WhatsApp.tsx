@@ -1001,7 +1001,7 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
           }}
         />
         {/* Header */}
-        <div className="h-24 bg-[#202c33] flex items-center justify-between px-4 flex-shrink-0 pt-12">
+        <div className="h-28 bg-[#202c33] flex items-center justify-between px-4 flex-shrink-0 pt-safe-island">
           <div className="flex items-center gap-3">
             {onBack && (
               <button 
@@ -1104,7 +1104,7 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
         {activeChat ? (
           <>
             {/* Chat Header */}
-            <div className="h-24 bg-[#202c33] flex items-center justify-between px-4 z-10 pt-12">
+            <div className="h-28 bg-[#202c33] flex items-center justify-between px-4 z-10 pt-safe-island">
               <div className="flex items-center gap-3">
                 <button 
                   className="md:hidden text-[#aebac1] hover:text-white mr-1"

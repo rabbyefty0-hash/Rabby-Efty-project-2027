@@ -63,7 +63,7 @@ export function AiSearch({ onBack }: AiSearchProps) {
 
   return (
     <div 
-      className="flex-1 flex flex-col h-full relative z-10 bg-zinc-950 overflow-hidden pt-12 pb-24"
+      className="flex-1 flex flex-col h-full relative z-10 bg-zinc-950 overflow-hidden pt-safe-island pb-24"
       style={{ touchAction: 'pan-y' }}
     >
       <div 

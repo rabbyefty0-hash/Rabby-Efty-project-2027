@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Plus, Trash2, Edit3, Save, StickyNote } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Markdown from 'react-markdown';
 
 interface NotesProps {
   onBack: () => void;
@@ -68,7 +69,7 @@ export function Notes({ onBack }: NotesProps) {
         }
       }}
     >
-      <div className="flex items-center justify-between p-4 pt-12 bg-yellow-400 text-yellow-900 shadow-sm z-10">
+      <div className="flex items-center justify-between p-4 pt-safe-island bg-yellow-400 text-yellow-900 shadow-sm z-10">
         <div className="flex items-center">
           <button onClick={() => activeNote && !isEditing ? setActiveNote(null) : onBack()} className="p-2 -ml-2 hover:bg-yellow-500/30 rounded-full transition-colors">
             <ChevronLeft className="w-6 h-6" />
@@ -142,13 +143,18 @@ export function Notes({ onBack }: NotesProps) {
                 className="text-2xl font-bold bg-transparent border-none focus:ring-0 p-0 mb-4 text-gray-900 placeholder:text-gray-400"
                 placeholder="Note Title"
               />
-              <textarea
-                value={activeNote.content}
-                onChange={(e) => setActiveNote({ ...activeNote, content: e.target.value })}
-                disabled={!isEditing}
-                className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800 resize-none placeholder:text-gray-400 leading-relaxed"
-                placeholder="Start typing your note here..."
-              />
+              {isEditing ? (
+                <textarea
+                  value={activeNote.content}
+                  onChange={(e) => setActiveNote({ ...activeNote, content: e.target.value })}
+                  className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-gray-800 resize-none placeholder:text-gray-400 leading-relaxed"
+                  placeholder="Start typing your note here (Markdown supported)..."
+                />
+              ) : (
+                <div className="flex-1 overflow-y-auto prose prose-yellow max-w-none text-gray-800">
+                  <Markdown>{activeNote.content || '*Empty note*'}</Markdown>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

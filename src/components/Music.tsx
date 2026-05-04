@@ -34,6 +34,41 @@ export function MusicApp({ onBack }: MusicProps) {
     loadAudioFiles();
   }, []);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('island-update', {
+      detail: {
+        tab: 'music',
+        type: 'music',
+        title: currentTrack?.name || 'No music playing',
+        subtitle: isPlaying ? 'Playing' : 'Paused',
+        isPlaying,
+        cover: null
+      }
+    }));
+  }, [isPlaying, currentTrack]);
+
+  useEffect(() => {
+    const handleIslandAction = (e: any) => {
+      if (e.detail.action === 'music-toggle') {
+        if (audioRef.current) {
+          if (audioRef.current.paused) {
+            audioRef.current.play();
+            setIsPlaying(true);
+          } else {
+            audioRef.current.pause();
+            setIsPlaying(false);
+          }
+        }
+      } else if (e.detail.action === 'music-next') {
+        handleNext();
+      } else if (e.detail.action === 'music-prev') {
+        handlePrev();
+      }
+    };
+    window.addEventListener('island-action', handleIslandAction);
+    return () => window.removeEventListener('island-action', handleIslandAction);
+  }, [audioFiles, currentTrack, generatedTracks]);
+
   const loadAudioFiles = async () => {
     const files = await getAllFiles();
     const audio = files.filter(f => {
@@ -262,7 +297,7 @@ export function MusicApp({ onBack }: MusicProps) {
         }
       }}
     >
-      <div className="flex items-center p-4 pt-12 bg-zinc-900/80 backdrop-blur-xl border-b border-white/10 z-10">
+      <div className="flex items-center p-4 pt-safe-island bg-zinc-900/80 backdrop-blur-xl border-b border-white/10 z-10">
         <button onClick={onBack} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors">
           <ChevronLeft className="w-6 h-6" />
         </button>

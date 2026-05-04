@@ -9,6 +9,7 @@ const SERVERS = [
   { id: 'us-chi', name: 'United States - Chicago', flag: '🇺🇸', premium: true },
   { id: 'us-dal', name: 'United States - Dallas', flag: '🇺🇸', premium: true },
   { id: 'us-sea', name: 'United States - Seattle', flag: '🇺🇸', premium: true },
+  { id: 'us-sjc', name: 'United States - San Jose', flag: '🇺🇸', premium: true },
   { id: 'uk-lon', name: 'United Kingdom - London', flag: '🇬🇧', premium: true },
   { id: 'uk-man', name: 'United Kingdom - Manchester', flag: '🇬🇧', premium: true },
   { id: 'jp-tok', name: 'Japan - Tokyo', flag: '🇯🇵', premium: true },
@@ -18,21 +19,27 @@ const SERVERS = [
   { id: 'de-ber', name: 'Germany - Berlin', flag: '🇩🇪', premium: true },
   { id: 'fr-par', name: 'France - Paris', flag: '🇫🇷', premium: true },
   { id: 'sg', name: 'Singapore', flag: '🇸🇬', premium: true },
+  { id: 'my-kul', name: 'Malaysia - Kuala Lumpur', flag: '🇲🇾', premium: true },
+  { id: 'th-bkk', name: 'Thailand - Bangkok', flag: '🇹🇭', premium: true },
   { id: 'au-syd', name: 'Australia - Sydney', flag: '🇦🇺', premium: true },
   { id: 'au-mel', name: 'Australia - Melbourne', flag: '🇦🇺', premium: true },
   { id: 'ae-dxb', name: 'UAE - Dubai', flag: '🇦🇪', premium: true },
   { id: 'ch-zur', name: 'Switzerland - Zurich', flag: '🇨🇭', premium: true },
-  { id: 'ca-tor', name: 'Canada - Toronto', flag: '🇨🇦', premium: false },
-  { id: 'ca-van', name: 'Canada - Vancouver', flag: '🇨🇦', premium: false },
-  { id: 'nl-ams', name: 'Netherlands - Amsterdam', flag: '🇳🇱', premium: false },
-  { id: 'in-mum', name: 'India - Mumbai', flag: '🇮🇳', premium: false },
-  { id: 'in-del', name: 'India - Delhi', flag: '🇮🇳', premium: false },
-  { id: 'br-sao', name: 'Brazil - São Paulo', flag: '🇧🇷', premium: false },
-  { id: 'za-jnb', name: 'South Africa - Johannesburg', flag: '🇿🇦', premium: false },
-  { id: 'it-mil', name: 'Italy - Milan', flag: '🇮🇹', premium: false },
-  { id: 'es-mad', name: 'Spain - Madrid', flag: '🇪🇸', premium: false },
-  { id: 'se-sto', name: 'Sweden - Stockholm', flag: '🇸🇪', premium: false },
-  { id: 'pl-war', name: 'Poland - Warsaw', flag: '🇵🇱', premium: false },
+  { id: 'ca-tor', name: 'Canada - Toronto', flag: '🇨🇦', premium: true },
+  { id: 'ca-van', name: 'Canada - Vancouver', flag: '🇨🇦', premium: true },
+  { id: 'nl-ams', name: 'Netherlands - Amsterdam', flag: '🇳🇱', premium: true },
+  { id: 'in-mum', name: 'India - Mumbai', flag: '🇮🇳', premium: true },
+  { id: 'in-del', name: 'India - Delhi', flag: '🇮🇳', premium: true },
+  { id: 'in-blr', name: 'India - Bangalore', flag: '🇮🇳', premium: true },
+  { id: 'br-sao', name: 'Brazil - São Paulo', flag: '🇧🇷', premium: true },
+  { id: 'za-jnb', name: 'South Africa - Johannesburg', flag: '🇿🇦', premium: true },
+  { id: 'it-mil', name: 'Italy - Milan', flag: '🇮🇹', premium: true },
+  { id: 'es-mad', name: 'Spain - Madrid', flag: '🇪🇸', premium: true },
+  { id: 'es-bcn', name: 'Spain - Barcelona', flag: '🇪🇸', premium: true },
+  { id: 'se-sto', name: 'Sweden - Stockholm', flag: '🇸🇪', premium: true },
+  { id: 'fi-hel', name: 'Finland - Helsinki', flag: '🇫🇮', premium: true },
+  { id: 'no-osl', name: 'Norway - Oslo', flag: '🇳🇴', premium: true },
+  { id: 'pl-war', name: 'Poland - Warsaw', flag: '🇵🇱', premium: true },
   { id: 'hk', name: 'Hong Kong', flag: '🇭🇰', premium: true },
   { id: 'tw-tpe', name: 'Taiwan - Taipei', flag: '🇹🇼', premium: true },
 ];
@@ -314,19 +321,19 @@ export function Vpn({ isConnected, setIsConnected, onBack }: VpnProps) {
       {/* Server Selection Modal */}
       <AnimatePresence>
         {showServers && (
-          <>
+          <div key="server-modal" className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowServers(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel liquid-glass z-50 rounded-3xl border border-white/10 overflow-hidden flex flex-col max-h-[80vh]"
+              className="relative w-full max-w-md glass-panel liquid-glass rounded-3xl border border-white/10 overflow-hidden flex flex-col max-h-[80vh] m-4 pointer-events-auto"
             >
               <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/5">
                 <h3 className="font-semibold text-lg flex items-center space-x-2">
@@ -388,7 +395,7 @@ export function Vpn({ isConnected, setIsConnected, onBack }: VpnProps) {
                 )}
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

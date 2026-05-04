@@ -199,6 +199,8 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
     return targetUrl;
   };
 
+  const proxyActive = useProxy || isVpnConnected;
+
   const navigateTo = (newUrl: string) => {
     let finalUrl = newUrl.trim();
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
@@ -209,7 +211,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
       }
     }
 
-    const effectiveUrl = getEffectiveUrl(finalUrl, useProxy);
+    const effectiveUrl = getEffectiveUrl(finalUrl, proxyActive);
     
     let title = finalUrl.replace('https://', '').replace('http://', '');
     try {
@@ -281,7 +283,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
   const goBack = () => {
     if (activeTab.historyIndex > 0) {
       const prevUrl = activeTab.history[activeTab.historyIndex - 1];
-      const effectiveUrl = getEffectiveUrl(prevUrl, useProxy);
+      const effectiveUrl = getEffectiveUrl(prevUrl, proxyActive);
       
       let title = prevUrl.replace('https://', '').replace('http://', '');
       try {
@@ -305,7 +307,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
   const goForward = () => {
     if (activeTab.historyIndex < activeTab.history.length - 1) {
       const nextUrl = activeTab.history[activeTab.historyIndex + 1];
-      const effectiveUrl = getEffectiveUrl(nextUrl, useProxy);
+      const effectiveUrl = getEffectiveUrl(nextUrl, proxyActive);
       
       let title = nextUrl.replace('https://', '').replace('http://', '');
       try {

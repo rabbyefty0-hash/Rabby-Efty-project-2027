@@ -273,7 +273,7 @@ export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) 
       </AnimatePresence>
 
       {/* Header */}
-      <div className="p-4 pt-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 z-10 glass-panel border-b border-white/5 sticky top-0">
+      <div className="p-4 pt-safe-island flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 z-10 glass-panel border-b border-white/5 sticky top-0">
         <div className="flex items-center space-x-2">
           <Video className="w-5 h-5 text-indigo-400" />
           <h1 className="text-lg font-semibold tracking-tight">꧁Rᴀʙʙʏ Eғᴛʏ꧂ Video</h1>

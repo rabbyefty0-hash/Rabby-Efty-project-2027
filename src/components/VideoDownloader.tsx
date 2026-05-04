@@ -15,6 +15,17 @@ export function VideoDownloader({ isVpnConnected, onBack }: VideoDownloaderProps
   const [error, setError] = useState('');
   const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    window.dispatchEvent(new CustomEvent('island-update', {
+      detail: {
+        tab: 'downloader',
+        type: 'downloader',
+        title: 'Video Downloader',
+        subtitle: isAnalyzing ? 'Analyzing link...' : downloadingFormat ? 'Downloading...' : result ? 'Ready to download' : 'Idle',
+      }
+    }));
+  }, [isAnalyzing, downloadingFormat, result]);
+
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;

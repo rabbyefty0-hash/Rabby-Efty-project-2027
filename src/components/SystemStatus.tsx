@@ -198,7 +198,7 @@ export const SystemStatus = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-14 pb-24 relative z-10">
+    <div className="flex-1 overflow-y-auto p-6 lg:p-12 pt-safe-island pb-24 relative z-10">
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="text-center space-y-2 mb-12">
           <motion.div

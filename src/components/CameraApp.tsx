@@ -136,7 +136,8 @@ export default function CameraApp({ onClose }: CameraAppProps) {
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setError("Permission denied. Please allow camera and microphone access in your browser settings.");
+        const inIframe = window !== window.top;
+        setError(`Permission denied. Please allow camera and microphone access.${inIframe ? ' Note: You must open the app in a new tab to grant permissions.' : ' Check your browser settings.'}`);
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setError("No camera found on this device.");
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {

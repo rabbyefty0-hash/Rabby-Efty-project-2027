@@ -67,6 +67,24 @@
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+  
+  .pt-safe-island {
+    padding-top: calc(env(safe-area-inset-top, 12px) + 54px);
+  }
+  
+  .pt-safe {
+    padding-top: calc(env(safe-area-inset-top, 12px) + 12px);
+  }
+  
+  .top-safe-island {
+    top: calc(env(safe-area-inset-top, 12px) + 8px);
+  }
+
+  @media (display-mode: standalone) {
+    .pwa-hide-status-bar {
+      display: none !important;
+    }
+  }
 
   .icon-3d-dark {
     background: linear-gradient(145deg, #222222, #0d0d0d);

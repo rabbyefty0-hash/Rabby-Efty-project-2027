@@ -192,7 +192,7 @@ export function TempNumber({ isVpnConnected, onBack }: TempNumberProps) {
 
   return (
     <div 
-      className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-12 pb-24"
+      className="flex-1 flex flex-col h-full relative z-10 bg-white/95 backdrop-blur-2xl overflow-hidden border-white/20 shadow-2xl pt-safe-island pb-24"
       style={{ touchAction: 'pan-y' }}
     >
       <div 
