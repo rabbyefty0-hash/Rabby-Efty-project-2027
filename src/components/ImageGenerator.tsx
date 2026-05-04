@@ -24,6 +24,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageEditor } from './ImageEditor';
 import { cn } from '@/src/lib/utils';
+import { addNode, generateId } from '../lib/vfs';
 
 declare global {
   interface Window {
@@ -173,22 +174,36 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
            throw imgError;
         }
       } else {
-        const response = await ai.models.generateImages({
-          model: 'imagen-3.0-generate-002',
-          prompt: finalPrompt,
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: {
+            parts: [
+              { text: finalPrompt }
+            ]
+          },
           config: {
-            numberOfImages: 1,
-            outputMimeType: "image/jpeg",
-            aspectRatio: aspectRatio,
+            imageConfig: {
+              aspectRatio: aspectRatio,
+            }
           }
         });
         
-        if (response.generatedImages && response.generatedImages.length > 0) {
-          const base64Image = response.generatedImages[0].image.imageBytes;
-          const dataUrl = `data:image/jpeg;base64,${base64Image}`;
-          setGeneratedImages(prev => [dataUrl, ...prev]);
-          console.log(`Generated and saved image.`);
-        } else {
+        let found = false;
+        if (response.candidates?.[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            // Find the image part, do not assume it is the first part.
+            if (part.inlineData) {
+              const base64Image = part.inlineData.data;
+              const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
+              setGeneratedImages(prev => [dataUrl, ...prev]);
+              console.log(`Generated and saved image.`);
+              found = true;
+              break;
+            }
+          }
+        }
+        
+        if (!found) {
           throw new Error("The AI failed to render your vision. Try refinement.");
         }
       }
@@ -297,6 +312,31 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
       triggerDownload(imgUrl, `${downloadOptions.filename || 'Efty-AI-Creation'}.jpg`);
     }
     setDownloadDialog({ isOpen: false, imageIndex: null });
+  };
+
+  const handleSaveToGallery = async (dataUrl: string) => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      
+      const fileId = generateId();
+      await addNode({
+        id: fileId,
+        name: `AI_Generated_${Date.now()}.jpg`,
+        type: 'file',
+        parentId: null, // Save to root or a specific folder if mapped
+        data: blob,
+        mimeType: 'image/jpeg',
+        size: blob.size,
+        createdAt: Date.now(),
+        modifiedAt: Date.now()
+      });
+      setStatus('Saved to Gallery!');
+      setTimeout(() => setStatus(''), 2000);
+    } catch (e) {
+      console.error("Failed to save to gallery", e);
+      setError("Failed to save to gallery.");
+    }
   };
   
   return (
@@ -505,6 +545,16 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                                 >
                                   <Download className="w-4 h-4 text-white" />
                                   <span className="text-white">Save</span>
+                                </motion.button>
+                                <motion.button 
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => handleSaveToGallery(img)}
+                                  className="px-4 py-3 bg-white/10 backdrop-blur-3xl rounded-[1.5rem] border border-white/20 hover:bg-white/20 transition-all flex items-center gap-2 text-xs"
+                                  title="Add to Gallery"
+                                >
+                                  <ImageIcon className="w-4 h-4 text-white" />
+                                  <span className="text-white">Gallery</span>
                                 </motion.button>
                                 <motion.button 
                                   whileHover={{ scale: 1.1 }}

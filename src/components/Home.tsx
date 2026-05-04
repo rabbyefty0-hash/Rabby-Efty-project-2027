@@ -1,5 +1,5 @@
-import React, { useState, useEffect, memo } from 'react';
-import { Sparkles, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock, Images } from 'lucide-react';
+import React, { useState, useEffect, memo, useMemo } from 'react';
+import { Sparkles, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock, Images, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../ThemeContext';
 import { APPS } from '../App';
@@ -185,6 +185,7 @@ const SmartStackWidget = memo(({ onNavigate }: { onNavigate: (tab: any) => void 
 
 export function Home({ onNavigate, recentApps }: HomeProps) {
   const { iconShape, iconSize } = useTheme();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const getIconShapeClass = () => {
     switch (iconShape) {
@@ -202,60 +203,98 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
     }
   };
 
+  const filteredApps = useMemo(() => {
+    if (!searchQuery) return APPS.filter(app => ['camera', 'gallery', 'image', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 'settings', 'calculator', 'weather', 'calendar', 'clock', 'music', 'maps', 'contacts', 'downloader'].includes(app.id));
+    return APPS.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()) || app.id.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [searchQuery]);
+
   return (
     <motion.div 
       className="flex-1 overflow-y-auto p-2 sm:p-4 pt-16 pb-32 relative z-10 custom-scrollbar h-full w-full"
     >
       <div className="w-full h-full relative">
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-          <ClockWidget />
-          <div className="flex flex-col gap-4 sm:gap-6 lg:col-span-2">
-            <SmartStackWidget onNavigate={onNavigate} />
-            <ArenaAiWidget onNavigate={onNavigate} />
+        {/* Persistent Search Bar */}
+        <div className="w-full relative z-30 mb-6 px-1 sm:px-2">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
+            <input
+              type="text"
+              placeholder="Search apps..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white/10 dark:bg-black/40 border border-white/20 rounded-2xl py-3 pl-12 pr-10 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 backdrop-blur-xl shadow-lg transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Recently Used Apps Carousel */}
-        {recentApps && recentApps.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-1.5 mb-3 pl-1">
-              <Clock className="w-3.5 h-3.5 text-white/50" />
-              <h3 className="text-white/70 font-medium text-[10px] tracking-widest uppercase">Recent</h3>
+        {!searchQuery ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+              <ClockWidget />
+              <div className="flex flex-col gap-4 sm:gap-6 lg:col-span-2">
+                <SmartStackWidget onNavigate={onNavigate} />
+                <ArenaAiWidget onNavigate={onNavigate} />
+              </div>
             </div>
-            <div className="flex overflow-x-auto hide-scrollbar gap-3 pb-2 pt-1 px-1">
-              {recentApps.map((app, index) => (
-                <motion.button
-                  key={app.id}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.92 }}
-                  transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
-                  onClick={() => onNavigate(app.id)}
-                  className="flex flex-col items-center space-y-1.5 group flex-shrink-0 w-[60px] sm:w-[70px]"
-                >
-                  <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon relative overflow-hidden`}>
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
-                    <app.icon className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
-                  </div>
-                  <span className="text-[10px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
-                </motion.button>
-              ))}
-            </div>
+
+            {/* Recently Used Apps Carousel */}
+            {recentApps && recentApps.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center gap-1.5 mb-3 pl-1">
+                  <Clock className="w-3.5 h-3.5 text-white/50" />
+                  <h3 className="text-white/70 font-medium text-[10px] tracking-widest uppercase">Recent</h3>
+                </div>
+                <div className="flex overflow-x-auto hide-scrollbar gap-3 pb-2 pt-1 px-1">
+                  {recentApps.map((app, index) => (
+                    <motion.button
+                      key={app.id}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.92 }}
+                      transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
+                      onClick={() => onNavigate(app.id)}
+                      className="flex flex-col items-center space-y-1.5 group flex-shrink-0 w-[60px] sm:w-[70px]"
+                    >
+                      <div className={`${getIconSizeClass()} ${getIconShapeClass()} ${app.bg || 'bg-white/10'} backdrop-blur-[40px] border border-white/20 shadow-[0_4px_12px_0_rgba(0,0,0,0.2),inset_0_1px_2px_rgba(255,255,255,0.3)] flex items-center justify-center ios-icon relative overflow-hidden`}>
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/5 to-transparent opacity-50 pointer-events-none" />
+                        <app.icon className={`w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 ${app.color || 'text-white'} drop-shadow-md relative z-10`} strokeWidth={1.5} />
+                      </div>
+                      <span className="text-[10px] font-medium text-white/90 truncate w-full text-center drop-shadow-md tracking-wide">{app.name}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="mb-6 px-1.5">
+            <h3 className="text-white/70 font-medium text-sm mb-4">Search Results</h3>
+            {filteredApps.length === 0 && (
+              <div className="text-white/50 text-center py-8">No apps found for "{searchQuery}"</div>
+            )}
           </div>
         )}
 
         {/* Home Screen Apps Grid */}
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-y-6 gap-x-2 sm:gap-x-4 mb-8 mt-4 px-1 sm:px-2">
-          {APPS.filter(app => ['camera', 'gallery', 'image', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 'settings', 'calculator', 'weather', 'calendar', 'clock', 'music', 'maps', 'contacts', 'downloader'].includes(app.id)).map((app, index) => (
+          {filteredApps.map((app, index) => (
             <motion.button
               key={app.id}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.92 }}
-              transition={{ delay: Math.min(index * 0.05, 0.5), type: 'spring', stiffness: 300, damping: 20 }}
+              transition={{ delay: Math.min(index * 0.02, 0.2), type: 'spring', stiffness: 300, damping: 20 }}
               onClick={() => onNavigate(app.id)}
               className="flex flex-col items-center space-y-1.5 group"
             >

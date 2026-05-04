@@ -804,7 +804,16 @@ export function FileManager({ onBack }: FileManagerProps) {
               <span className="font-semibold text-sm truncate max-w-[200px]">{previewNode.name}</span>
               <div className="flex items-center gap-4">
                 <button onClick={() => handleShare(previewNode)} className="text-blue-400"><Share className="w-5 h-5" /></button>
-                <button className="text-blue-400"><Download className="w-5 h-5" /></button>
+                <button onClick={() => {
+                  if (previewUrl && previewNode) {
+                    const a = document.createElement('a');
+                    a.href = previewUrl;
+                    a.download = previewNode.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }
+                }} className="text-blue-400"><Download className="w-5 h-5" /></button>
               </div>
             </div>
 

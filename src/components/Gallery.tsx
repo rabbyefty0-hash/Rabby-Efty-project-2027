@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Share, Trash2, Heart, Play, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, Share, Trash2, Heart, Play, Sparkles, Image as ImageIcon, Download } from 'lucide-react';
 import { VFSNode, getAllFiles, getNode, deleteNode } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
 import { GoogleGenAI } from '@google/genai';
@@ -122,6 +122,17 @@ export function Gallery({ onBack }: GalleryProps) {
       console.error("Error generating description:", error);
       setAiDescription("Failed to generate description.");
       setIsGeneratingDescription(false);
+    }
+  };
+
+  const downloadFile = () => {
+    if (previewUrl && previewNode) {
+      const a = document.createElement('a');
+      a.href = previewUrl;
+      a.download = previewNode.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   };
 
@@ -265,6 +276,10 @@ export function Gallery({ onBack }: GalleryProps) {
               <button className="text-blue-400 flex flex-col items-center gap-1 hover:scale-110 active:scale-95 transition-all">
                 <Share className="w-6 h-6" />
                 <span className="text-[10px] font-medium opacity-80">Share</span>
+              </button>
+              <button onClick={downloadFile} className="text-emerald-400 flex flex-col items-center gap-1 hover:scale-110 active:scale-95 transition-all">
+                <Download className="w-6 h-6" />
+                <span className="text-[10px] font-medium opacity-80">Save</span>
               </button>
               {previewNode.mimeType?.startsWith('image/') && (
                 <button id="wallpaper-btn" onClick={setAsWallpaper} className="text-white flex flex-col items-center gap-1 hover:scale-110 active:scale-95 transition-all">

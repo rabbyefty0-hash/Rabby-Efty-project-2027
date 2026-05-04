@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, X, MessageSquare, Check, CheckCheck, Trash2, Volume2, StopCircle, Zap, VolumeX, Mic } from 'lucide-react';
-import { ChatMessage } from '@/src/types';
+import { Send, Bot, User, Loader2, X, MessageSquare, Check, CheckCheck, Trash2, Volume2, StopCircle, Zap, VolumeX, Mic, History, Plus, ChevronLeft } from 'lucide-react';
+import { ChatMessage, ChatSession } from '@/src/types';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './ui/card';
@@ -10,14 +10,31 @@ import { useTheme } from '../ThemeContext';
 
 interface ChatbotProps {
   messages: ChatMessage[];
+  sessions?: ChatSession[];
+  currentSessionId?: string;
+  onSwitchSession?: (id: string) => void;
+  onNewSession?: () => void;
+  onDeleteSession?: (id: string) => void;
   onSendMessage: (text: string) => void;
   onClearChat?: () => void;
   onStopGeneration?: () => void;
   isTyping: boolean;
 }
 
-export function Chatbot({ messages, onSendMessage, onClearChat, onStopGeneration, isTyping }: ChatbotProps) {
+export function Chatbot({ 
+  messages, 
+  sessions,
+  currentSessionId,
+  onSwitchSession,
+  onNewSession,
+  onDeleteSession,
+  onSendMessage, 
+  onClearChat, 
+  onStopGeneration, 
+  isTyping 
+}: ChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [input, setInput] = useState('');
   const [isSpeaking, setIsSpeaking] = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(false);
@@ -210,23 +227,43 @@ export function Chatbot({ messages, onSendMessage, onClearChat, onStopGeneration
           >
             <div className="flex items-center justify-between p-5 bg-black/40 backdrop-blur-xl border-b border-white/10 cursor-move">
               <div className="flex items-center space-x-3">
-                <div className={`w-8 h-8 ${getIconShapeClass()} bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shadow-sm`}>
-                  <Bot className="w-4 h-4 text-indigo-400" />
-                </div>
-                <h3 className="font-semibold text-white">꧁Rᴀʙʙʏ Eғᴛʏ꧂</h3>
+                {showHistory ? (
+                   <button 
+                     onClick={() => setShowHistory(false)}
+                     className="p-1 hover:bg-white/10 rounded-full transition-colors text-white"
+                   >
+                     <ChevronLeft className="w-5 h-5" />
+                   </button>
+                ) : (
+                  <div className={`w-8 h-8 ${getIconShapeClass()} bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shadow-sm`}>
+                    <Bot className="w-4 h-4 text-indigo-400" />
+                  </div>
+                )}
+                <h3 className="font-semibold text-white">{showHistory ? 'Chat History' : '꧁Rᴀʙʙʏ Eғᴛʏ꧂'}</h3>
               </div>
               <div className="flex items-center space-x-1">
-                <button
-                  onClick={() => {
-                    setAutoSpeak(!autoSpeak);
-                    if (autoSpeak && 'speechSynthesis' in window) window.speechSynthesis.cancel();
-                  }}
-                  className={`p-2 rounded-full transition-colors ${autoSpeak ? 'bg-indigo-500/20 text-indigo-400' : 'hover:bg-white/10 text-zinc-400 hover:text-white'}`}
-                  title={autoSpeak ? "Disable Auto-Voice" : "Enable Auto-Voice"}
-                >
-                  {autoSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </button>
-                {onClearChat && messages.length > 0 && (
+                {!showHistory && sessions && (
+                  <button
+                    onClick={() => setShowHistory(true)}
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors text-zinc-400 hover:text-white"
+                    title="History"
+                  >
+                    <History className="w-4 h-4" />
+                  </button>
+                )}
+                {!showHistory && (
+                  <button
+                    onClick={() => {
+                      setAutoSpeak(!autoSpeak);
+                      if (autoSpeak && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+                    }}
+                    className={`p-2 rounded-full transition-colors ${autoSpeak ? 'bg-indigo-500/20 text-indigo-400' : 'hover:bg-white/10 text-zinc-400 hover:text-white'}`}
+                    title={autoSpeak ? "Disable Auto-Voice" : "Enable Auto-Voice"}
+                  >
+                    {autoSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                  </button>
+                )}
+                {!showHistory && onClearChat && messages.length > 0 && (
                   <button
                     onClick={onClearChat}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors text-zinc-400 hover:text-red-400"
@@ -244,8 +281,51 @@ export function Chatbot({ messages, onSendMessage, onClearChat, onStopGeneration
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-black/20">
-              {messages.length === 0 ? (
+            {showHistory ? (
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-black/20 custom-scrollbar">
+                <button 
+                  onClick={() => {
+                    if (onNewSession) onNewSession();
+                    setShowHistory(false);
+                  }}
+                  className="w-full flex items-center justify-center space-x-2 py-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 text-white transition-colors mb-4 text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Conversation</span>
+                </button>
+                
+                {sessions?.map(session => (
+                  <div 
+                    key={session.id}
+                    onClick={() => {
+                      if (onSwitchSession) onSwitchSession(session.id);
+                      setShowHistory(false);
+                    }}
+                    className={`group flex items-center justify-between p-3 rounded-2xl border cursor-pointer transition-all ${
+                      session.id === currentSessionId ? 'bg-indigo-500/20 border-indigo-500/50' : 'bg-white/5 border-transparent hover:bg-white/10 hover:border-white/10'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0 pr-2">
+                       <h4 className="text-sm font-medium text-white truncate w-full">{session.title || 'Conversation'}</h4>
+                       <p className="text-[10px] text-white/40 mt-1">{new Date(session.updatedAt).toLocaleString()}</p>
+                    </div>
+                    {onDeleteSession && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteSession(session.id);
+                        }}
+                        className="p-2 opacity-0 group-hover:opacity-100 hover:bg-rose-500/20 text-rose-400 rounded-full transition-all shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-black/20">
+                {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-3 text-white/50">
                   <Bot className="w-12 h-12 text-white/20" />
                   <p className="text-sm max-w-[200px]">
@@ -393,64 +473,67 @@ export function Chatbot({ messages, onSendMessage, onClearChat, onStopGeneration
               )}
               <div ref={messagesEndRef} />
             </div>
+            )}
 
-            <div className={`bg-black/40 backdrop-blur-xl border-t border-white/10 pb-safe transition-all duration-300 ${
-              keyboardLayout === 'compact' ? 'p-2' : 
-              keyboardLayout === 'floating' ? 'm-4 p-3 rounded-3xl border border-white/20 shadow-2xl' : 
-              'p-4'
-            }`}>
-              {messages.length === 0 && (
-                <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-3 pb-1">
-                  {['Tell me a joke', 'Write a poem', 'Explain quantum physics', 'Give me a recipe'].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => setInput(suggestion)}
-                      className="whitespace-nowrap px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-white/80 transition-colors"
+            {!showHistory && (
+              <div className={`bg-black/40 backdrop-blur-xl border-t border-white/10 pb-safe transition-all duration-300 ${
+                keyboardLayout === 'compact' ? 'p-2' : 
+                keyboardLayout === 'floating' ? 'm-4 p-3 rounded-3xl border border-white/20 shadow-2xl' : 
+                'p-4'
+              }`}>
+                {messages.length === 0 && (
+                  <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-3 pb-1">
+                    {['Tell me a joke', 'Write a poem', 'Explain quantum physics', 'Give me a recipe'].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => setInput(suggestion)}
+                        className="whitespace-nowrap px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-white/80 transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <form onSubmit={handleSubmit} className="flex space-x-3 items-end">
+                  <div className="flex-1 relative">
+                    <Input
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Ask ꧁Rᴀʙʙʏ Eғᴛʏ꧂..."
+                      disabled={isTyping || isRefining}
+                      className="w-full glass-input rounded-[1.4rem] px-5 py-4 min-h-[52px] text-[15px] text-white placeholder:text-white/40 focus-visible:ring-0 focus-visible:ring-offset-0 border-none shadow-inner"
+                    />
+                  </div>
+                  <div className="flex space-x-2 mb-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={toggleListening}
+                      disabled={isTyping || isRefining}
+                      className={`w-11 h-11 rounded-full shadow-sm border-none transition-all ${isListening ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse' : 'bg-white/5 hover:bg-white/10 text-emerald-400'}`}
+                      title={isListening ? "Stop Listening" : "Start Voice Input"}
                     >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <form onSubmit={handleSubmit} className="flex space-x-3 items-end">
-                <div className="flex-1 relative">
-                  <Input
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask ꧁Rᴀʙʙʏ Eғᴛʏ꧂..."
-                    disabled={isTyping || isRefining}
-                    className="w-full glass-input rounded-[1.4rem] px-5 py-4 min-h-[52px] text-[15px] text-white placeholder:text-white/40 focus-visible:ring-0 focus-visible:ring-offset-0 border-none shadow-inner"
-                  />
-                </div>
-                <div className="flex space-x-2 mb-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={toggleListening}
-                    disabled={isTyping || isRefining}
-                    className={`w-11 h-11 rounded-full shadow-sm border-none transition-all ${isListening ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30 animate-pulse' : 'bg-white/5 hover:bg-white/10 text-emerald-400'}`}
-                    title={isListening ? "Stop Listening" : "Start Voice Input"}
-                  >
-                    <Mic className="w-5 h-5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={refinePrompt}
-                    disabled={!input.trim() || isTyping || isRefining}
-                    className={`w-11 h-11 rounded-full shadow-sm bg-white/5 hover:bg-white/10 text-amber-400 border-none transition-all ${isRefining ? 'animate-pulse' : ''}`}
-                    title="Enhance Prompt"
-                  >
-                    {isRefining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-                  </Button>
-                  <Button type="submit" size="icon" disabled={!input.trim() || isTyping || isRefining} className="w-11 h-11 rounded-full shadow-md bg-indigo-500 hover:bg-indigo-600 text-white border-none transition-transform active:scale-95">
-                    <Send className="w-5 h-5 ml-0.5" />
-                  </Button>
-                </div>
-              </form>
-            </div>
+                      <Mic className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={refinePrompt}
+                      disabled={!input.trim() || isTyping || isRefining}
+                      className={`w-11 h-11 rounded-full shadow-sm bg-white/5 hover:bg-white/10 text-amber-400 border-none transition-all ${isRefining ? 'animate-pulse' : ''}`}
+                      title="Enhance Prompt"
+                    >
+                      {isRefining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+                    </Button>
+                    <Button type="submit" size="icon" disabled={!input.trim() || isTyping || isRefining} className="w-11 h-11 rounded-full shadow-md bg-indigo-500 hover:bg-indigo-600 text-white border-none transition-transform active:scale-95">
+                      <Send className="w-5 h-5 ml-0.5" />
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

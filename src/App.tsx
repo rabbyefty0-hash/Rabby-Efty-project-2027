@@ -56,6 +56,7 @@ export const APPS = [
   { id: 'video', name: 'Video', icon: Video, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'voice', name: 'Voice', icon: Mic, color: 'text-rose-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'vpn', name: 'VPN', icon: Shield, color: 'text-teal-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'text-red-600', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'browser', name: 'Browser', icon: Globe, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'unblocker', name: 'Unblocker', icon: Shield, color: 'text-red-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'downloader', name: 'Downloader', icon: DownloadCloud, color: 'text-cyan-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -80,7 +81,6 @@ export const APPS = [
   { id: 'clock', name: 'Clock', icon: Clock, color: 'text-black', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'contacts', name: 'Contacts', icon: Users, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'music', name: 'Music', icon: Music, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
-  { id: 'youtube', name: 'YouTube', icon: Youtube, color: 'text-red-600', bg: 'bg-gradient-to-br from-white to-gray-100' },
 ];
 
 function AppContent() {
@@ -92,23 +92,67 @@ function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() => {
-    const saved = localStorage.getItem('chatHistory');
+  const [chatSessions, setChatSessions] = useState<import('./types').ChatSession[]>(() => {
+    const saved = localStorage.getItem('chatSessions');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const messages = parsed.map((msg: any) => ({
-          ...msg,
-          timestamp: new Date(msg.timestamp)
+        return parsed.map((s: any) => ({
+          ...s,
+          messages: s.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
         }));
-        restoreChatHistory(messages);
-        return messages;
       } catch (e) {
-        console.error('Failed to parse chat history', e);
+        console.error('Failed to parse chat sessions', e);
       }
     }
-    return [];
+    return [{ id: 'default', title: 'New Conversation', messages: [], updatedAt: Date.now() }];
   });
+
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => {
+    const saved = localStorage.getItem('chatSessions');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) return parsed[0].id;
+      } catch (e) {}
+    }
+    return 'default';
+  });
+
+  const chatMessages = chatSessions.find(s => s.id === currentSessionId)?.messages || [];
+
+  const setChatMessages = React.useCallback((updater: any) => {
+    setChatSessions(prev => {
+      const idx = prev.findIndex(s => s.id === currentSessionId);
+      let sessionIndex = idx;
+      let newSessions = [...prev];
+      
+      if (idx === -1) {
+        // Should not happen, but fallback just in case
+        newSessions.push({ id: currentSessionId, title: 'New Conversation', messages: [], updatedAt: Date.now() });
+        sessionIndex = newSessions.length - 1;
+      }
+
+      const current = newSessions[sessionIndex];
+      const newMessages = typeof updater === 'function' ? updater(current.messages) : updater;
+      
+      let newTitle = current.title;
+      if (current.messages.length === 0 && newMessages.length > 0 && newMessages[0].role === 'user') {
+         newTitle = newMessages[0].text.slice(0, 30);
+      }
+
+      newSessions[sessionIndex] = { ...current, title: newTitle, messages: newMessages, updatedAt: Date.now() };
+      return newSessions;
+    });
+  }, [currentSessionId]);
+
+  useEffect(() => {
+    restoreChatHistory(chatMessages);
+  }, [currentSessionId]);
+
   const [isTyping, setIsTyping] = useState(false);
   const [isVpnConnected, setIsVpnConnected] = useState(false);
 
@@ -194,8 +238,8 @@ function AppContent() {
   }, []);
 
   React.useEffect(() => {
-    localStorage.setItem('chatHistory', JSON.stringify(chatMessages));
-  }, [chatMessages]);
+    localStorage.setItem('chatSessions', JSON.stringify(chatSessions));
+  }, [chatSessions]);
 
   const handleSignIn = async () => {
     try {
@@ -218,9 +262,31 @@ function AppContent() {
 
   const handleClearChat = () => {
     setChatMessages([]);
-    localStorage.removeItem('chatHistory');
     initChatSession(files, null);
   };
+  
+  const handleNewSession = () => {
+    const newId = Date.now().toString();
+    setChatSessions(prev => [{ id: newId, title: 'New Conversation', messages: [], updatedAt: Date.now() }, ...prev]);
+    setCurrentSessionId(newId);
+    initChatSession(files, null);
+  };
+
+  const handleDeleteSession = (id: string) => {
+    setChatSessions(prev => {
+      const filtered = prev.filter(s => s.id !== id);
+      if (filtered.length === 0) {
+        const newId = Date.now().toString();
+        setCurrentSessionId(newId);
+        return [{ id: newId, title: 'New Conversation', messages: [], updatedAt: Date.now() }];
+      }
+      if (currentSessionId === id) {
+        setCurrentSessionId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
+
 
   const handleFilesAdded = (newFiles: UploadedFile[]) => {
     setFiles((prev) => [...prev, ...newFiles]);
@@ -818,6 +884,11 @@ function AppContent() {
         <Suspense fallback={null}>
           <Chatbot
             messages={chatMessages}
+            sessions={chatSessions}
+            currentSessionId={currentSessionId}
+            onSwitchSession={setCurrentSessionId}
+            onNewSession={handleNewSession}
+            onDeleteSession={handleDeleteSession}
             onSendMessage={handleSendMessage}
             onClearChat={handleClearChat}
             onStopGeneration={handleStopGeneration}
@@ -913,61 +984,7 @@ function AppContent() {
   );
 }
 
-function CustomCursor() {
-  const cursorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const updatePosition = (e: MouseEvent) => {
-      if (cursorRef.current) {
-        const target = e.target as HTMLElement;
-        const isClickable = 
-          target.tagName.toLowerCase() === 'button' || 
-          target.tagName.toLowerCase() === 'a' || 
-          target.tagName.toLowerCase() === 'input' || 
-          target.tagName.toLowerCase() === 'textarea' || 
-          target.closest('button') || 
-          target.closest('a') ||
-          target.closest('.cursor-pointer');
-
-        const scale = isClickable ? 'scale(1.5)' : 'scale(1)';
-        const bg = isClickable ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.1)';
-
-        cursorRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%) ${scale}`;
-        cursorRef.current.style.background = bg;
-      }
-    };
-
-    window.addEventListener('mousemove', updatePosition);
-    return () => window.removeEventListener('mousemove', updatePosition);
-  }, []);
-
-  return (
-    <>
-      <style>{`
-        @media (min-width: 640px) {
-          * {
-            cursor: none !important;
-          }
-        }
-      `}</style>
-      <div
-        ref={cursorRef}
-        className="fixed top-0 left-0 w-8 h-8 rounded-full pointer-events-none z-[99999] hidden sm:flex items-center justify-center"
-        style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 0 20px rgba(255, 255, 255, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(4px)',
-          WebkitBackdropFilter: 'blur(4px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          transform: 'translate3d(-100px, -100px, 0) translate(-50%, -50%)',
-          transition: 'transform 0.1s ease-out, background 0.2s ease-out',
-        }}
-      >
-        <div className="w-1.5 h-1.5 bg-white/60 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]" />
-      </div>
-    </>
-  );
-}
+import { CustomCursor } from './components/CustomCursor';
 
 export default function App() {
   return (

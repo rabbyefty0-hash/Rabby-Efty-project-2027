@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, ArrowLeft, Wand2, Copy, Check, Loader2, Sparkles, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
+import Markdown from 'react-markdown';
 
 interface TextGeneratorProps {
   onBack: () => void;
@@ -45,10 +46,10 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
-      const fullPrompt = `Make the following prompt more specific and actionable for a text generation AI. Return ONLY the refined prompt without any preamble or explanation:\n\n${prompt}`;
+      const fullPrompt = `Make the following prompt more specific, detailed, and actionable for a text generation AI. Expand the prompt to include better context and instructions. Return ONLY the refined prompt without any preamble or explanation:\n\n${prompt}`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-pro-preview',
         contents: fullPrompt,
       });
 
@@ -79,11 +80,14 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
 
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
-      const fullPrompt = `Generate a ${length} text in a ${tone} tone about the following topic/prompt:\n\n${prompt}\n\nPlease format the text beautifully using markdown (headings, bullet points if needed).`;
+      const fullPrompt = `Generate a ${length} text in a ${tone} tone about the following topic/prompt:\n\n${prompt}\n\nPlease format the text beautifully using markdown. Utilize headings (##, ###), bullet points, bold/italic text, and code blocks where appropriate, to make the output structured and engaging.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-pro-preview',
         contents: fullPrompt,
+        config: {
+          maxOutputTokens: 8192,
+        }
       });
 
       if (response.text) {
@@ -243,8 +247,8 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
                 
                 <h3 className="text-xs font-bold text-blue-400 tracking-widest uppercase mb-4">Generated Content</h3>
                 
-                <div className="prose prose-invert prose-sm max-w-none text-white/80 mt-4 whitespace-pre-wrap">
-                  {generatedText}
+                <div className="prose prose-invert prose-sm max-w-none text-white/80 mt-4 prose-p:leading-relaxed prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 relative group">
+                  <Markdown>{generatedText}</Markdown>
                 </div>
               </motion.div>
             )}

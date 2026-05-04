@@ -11,6 +11,7 @@ interface YouTubeVideo {
   snippet: {
     title: string;
     description: string;
+    channelId?: string;
     thumbnails: {
       medium: { url: string };
       high: { url: string };
@@ -93,6 +94,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
     snippet: {
       title: item.title,
       description: item.description || '',
+      channelId: item.authorId || item.authorId,
       thumbnails: {
         medium: { url: item.videoThumbnails?.find((t: any) => t.quality === 'medium')?.url || item.videoThumbnails?.[0]?.url || '' },
         high: { url: item.videoThumbnails?.find((t: any) => t.quality === 'high')?.url || item.videoThumbnails?.[0]?.url || '' }
@@ -133,7 +135,7 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
         setIsLoading(false);
         return;
       }
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&q=trending&type=video&key=${apiKey}`);
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=20&key=${apiKey}`);
       if (!res.ok) throw new Error('Failed to fetch trending videos');
       const data = await res.json();
       setVideos(data.items || MOCK_VIDEOS);
@@ -212,8 +214,9 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
         setIsLoadingExtra(false);
         return;
       }
+      const channelId = selectedVideo.snippet.channelId ? `&channelId=${selectedVideo.snippet.channelId}` : `&q=${encodeURIComponent(selectedVideo.snippet.channelTitle)}`;
       const [relatedRes, commentsRes] = await Promise.all([
-        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&relatedToVideoId=${videoId}&type=video&key=${apiKey}`).catch(() => null),
+        fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10${channelId}&type=video&key=${apiKey}`).catch(() => null),
         fetch(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&maxResults=10&key=${apiKey}`).catch(() => null)
       ]);
 

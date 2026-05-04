@@ -157,14 +157,6 @@ export function MusicApp({ onBack }: MusicProps) {
     try {
       setIsGenerating(true);
       
-      const win = window as any;
-      if (win.aistudio && win.aistudio.hasSelectedApiKey) {
-        const hasKey = await win.aistudio.hasSelectedApiKey();
-        if (!hasKey) {
-          await win.aistudio.openSelectKey();
-        }
-      }
-
       const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
       if (!apiKey) {
         alert("API key is missing. Please select an API key.");

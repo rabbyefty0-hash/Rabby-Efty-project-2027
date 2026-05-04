@@ -26,3 +26,10 @@ export interface ChatMessage {
   status?: 'sent' | 'delivered' | 'read';
   sources?: { title: string; uri: string }[];
 }
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  updatedAt: number;
+}

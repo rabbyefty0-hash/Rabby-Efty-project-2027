@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings, Plus, Shield, Search, Menu, MoreVertical, ShieldAlert, RefreshCw, Triangle, Sparkles, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RotateCw, Home, Lock, ShieldCheck, ExternalLink, Globe, AlertCircle, Star, Bookmark, Trash2, X, Settings, Plus, Shield, Search, Menu, MoreVertical, ShieldAlert, RefreshCw, Triangle, Sparkles, Loader2, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { processAiWebSearch } from '../services/gemini';
 import Markdown from 'react-markdown';
@@ -51,6 +51,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
     return localStorage.getItem('browser_use_proxy') === 'true';
   });
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [menuTab, setMenuTab] = useState<'bookmarks' | 'history'>('bookmarks');
   const [showSettings, setShowSettings] = useState(false);
   const [showTabSwitcher, setShowTabSwitcher] = useState(false);
   const [showShields, setShowShields] = useState(false);
@@ -64,6 +65,10 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
       { url: 'https://duckduckgo.com', title: 'DuckDuckGo' }
     ];
   });
+  const [globalHistory, setGlobalHistory] = useState<{id: string, url: string, title: string, timestamp: number}[]>(() => {
+    const saved = localStorage.getItem('browser_global_history');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
 
@@ -74,6 +79,10 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
   useEffect(() => {
     localStorage.setItem('browser_bookmarks', JSON.stringify(bookmarks));
   }, [bookmarks]);
+
+  useEffect(() => {
+    localStorage.setItem('browser_global_history', JSON.stringify(globalHistory));
+  }, [globalHistory]);
 
   // Tab suspension logic
   useEffect(() => {
@@ -194,6 +203,13 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
 
     const newHistory = activeTab.history.slice(0, activeTab.historyIndex + 1);
     newHistory.push(finalUrl);
+
+    if (finalUrl !== 'about:blank' && !finalUrl.startsWith('chrome://')) {
+      setGlobalHistory(prev => {
+        const next = [{ id: Date.now().toString(), url: finalUrl, title, timestamp: Date.now() }, ...prev];
+        return next.slice(0, 500); // keep max 500 items
+      });
+    }
 
     updateActiveTab({
       url: effectiveUrl,
@@ -753,7 +769,7 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
               <div className="flex justify-center p-3">
                 <div className="w-12 h-1.5 bg-zinc-300 rounded-full"></div>
               </div>
-              <div className="px-6 pb-4 border-b border-zinc-100 flex justify-between items-center">
+              <div className="px-6 pb-2 flex justify-between items-center">
                 <h2 className="text-lg font-bold text-zinc-800">Menu</h2>
                 <div className="flex gap-2">
                   <button onClick={toggleBookmark} className="p-2 bg-zinc-100 rounded-full text-zinc-700">
@@ -764,44 +780,108 @@ export function Browser({ isVpnConnected, setIsVpnConnected, onBack }: BrowserPr
                   </button>
                 </div>
               </div>
+              
+              <div className="flex border-b border-zinc-100 px-4">
+                <button
+                  onClick={() => setMenuTab('bookmarks')}
+                  className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${menuTab === 'bookmarks' ? 'border-orange-500 text-orange-500' : 'border-transparent text-zinc-500 hover:text-zinc-700'}`}
+                >
+                  Bookmarks
+                </button>
+                <button
+                  onClick={() => setMenuTab('history')}
+                  className={`flex-1 py-3 text-sm font-bold border-b-2 transition-colors ${menuTab === 'history' ? 'border-orange-500 text-orange-500' : 'border-transparent text-zinc-500 hover:text-zinc-700'}`}
+                >
+                  History
+                </button>
+              </div>
+
               <div className="flex-1 overflow-y-auto p-4">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3 px-2">Bookmarks</h3>
-                <div className="space-y-1">
-                  {bookmarks.length === 0 ? (
-                    <div className="text-center py-8 text-zinc-400 text-sm">
-                      No bookmarks yet
-                    </div>
-                  ) : (
-                    bookmarks.map((bookmark, idx) => (
-                      <div key={idx} className="flex items-center justify-between group p-3 hover:bg-zinc-100 rounded-2xl transition-colors">
+                {menuTab === 'bookmarks' ? (
+                  <div className="space-y-1">
+                    {bookmarks.length === 0 ? (
+                      <div className="text-center py-8 text-zinc-400 text-sm">
+                        No bookmarks yet
+                      </div>
+                    ) : (
+                      bookmarks.map((bookmark, idx) => (
+                        <div key={idx} className="flex items-center justify-between group p-3 hover:bg-zinc-100 rounded-2xl transition-colors">
+                          <button 
+                            onClick={() => {
+                              navigateTo(bookmark.url);
+                              setShowBookmarks(false);
+                            }}
+                            className="flex-1 flex items-center gap-3 text-left truncate pr-2"
+                          >
+                            <div className="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center shrink-0">
+                              <Bookmark className="w-5 h-5 text-zinc-500" />
+                            </div>
+                            <div className="truncate">
+                              <div className="text-sm font-bold text-zinc-800 truncate">{bookmark.title}</div>
+                              <div className="text-xs text-zinc-500 truncate">{bookmark.url}</div>
+                            </div>
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setBookmarks(bookmarks.filter((_, i) => i !== idx));
+                            }}
+                            className="p-2 text-zinc-400 hover:text-red-500 bg-white shadow-sm rounded-full transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {globalHistory.length > 0 && (
+                      <div className="flex justify-end mb-2 px-2">
                         <button 
-                          onClick={() => {
-                            navigateTo(bookmark.url);
-                            setShowBookmarks(false);
-                          }}
-                          className="flex-1 flex items-center gap-3 text-left truncate pr-2"
+                          onClick={() => setGlobalHistory([])}
+                          className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors py-1 px-2 rounded-lg hover:bg-red-50"
                         >
-                          <div className="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center shrink-0">
-                            <Bookmark className="w-5 h-5 text-zinc-500" />
-                          </div>
-                          <div className="truncate">
-                            <div className="text-sm font-bold text-zinc-800 truncate">{bookmark.title}</div>
-                            <div className="text-xs text-zinc-500 truncate">{bookmark.url}</div>
-                          </div>
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setBookmarks(bookmarks.filter((_, i) => i !== idx));
-                          }}
-                          className="p-2 text-zinc-400 hover:text-red-500 bg-white shadow-sm rounded-full transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
+                          Clear History
                         </button>
                       </div>
-                    ))
-                  )}
-                </div>
+                    )}
+                    {globalHistory.length === 0 ? (
+                      <div className="text-center py-8 text-zinc-400 text-sm">
+                        No history yet
+                      </div>
+                    ) : (
+                      globalHistory.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between group p-3 hover:bg-zinc-100 rounded-2xl transition-colors">
+                          <button 
+                            onClick={() => {
+                              navigateTo(item.url);
+                              setShowBookmarks(false);
+                            }}
+                            className="flex-1 flex items-center gap-3 text-left truncate pr-2"
+                          >
+                            <div className="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center shrink-0">
+                              <History className="w-5 h-5 text-zinc-500" />
+                            </div>
+                            <div className="truncate flex-1">
+                              <div className="text-sm font-bold text-zinc-800 truncate">{item.title}</div>
+                              <div className="text-xs text-zinc-500 truncate">{item.url}</div>
+                            </div>
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setGlobalHistory(prev => prev.filter(h => h.id !== item.id));
+                            }}
+                            className="p-2 text-zinc-400 hover:text-red-500 bg-white shadow-sm rounded-full transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </>

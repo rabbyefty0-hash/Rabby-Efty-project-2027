@@ -46,20 +46,11 @@ export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) 
   }, []);
 
   const checkKey = async () => {
-    if (window.aistudio?.hasSelectedApiKey) {
-      const selected = await window.aistudio.hasSelectedApiKey();
-      setHasKey(selected);
-    } else {
-      // Fallback for local dev or if not in AI Studio environment
-      setHasKey(true);
-    }
+    setHasKey(true);
   };
 
   const handleSelectKey = async () => {
-    if (window.aistudio?.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      setHasKey(true); // Assume success as per guidelines
-    }
+    // No-op
   };
 
   const ENHANCE_PRESETS = [
@@ -147,14 +138,6 @@ export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) 
     if (e) e.preventDefault();
     if (!prompt.trim() && !uploadedVideo) return;
 
-    // Check key again before generating
-    if (window.aistudio?.hasSelectedApiKey) {
-      const selected = await window.aistudio.hasSelectedApiKey();
-      if (!selected) {
-        await handleSelectKey();
-      }
-    }
-
     setIsGenerating(true);
     setError('');
     setStatus('Checking API Key...');
@@ -233,8 +216,7 @@ export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) 
       let displayError = errorMessage;
       
       if (errorMessage.includes('PERMISSION_DENIED') || errorMessage.includes('403')) {
-        displayError = 'Permission denied. Please ensure you have selected a valid paid API key for video generation.';
-        setHasKey(false); // Prompt them to select a key again
+        displayError = 'Video generation failed. Please try again later.';
       } else if (errorMessage.startsWith('{')) {
         try {
           const parsed = JSON.parse(errorMessage);
@@ -273,27 +255,6 @@ export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) 
           window.addEventListener('pointerup', handlePointerUp);
         }}
       />
-      {/* Key Selection Banner */}
-      {hasKey === false && (
-        <div className="absolute top-[72px] left-4 right-4 z-50 bg-indigo-500/90 backdrop-blur-xl p-4 rounded-2xl flex items-center justify-between shadow-2xl border border-white/20 animate-in slide-in-from-top duration-500">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold">API Key Required</h3>
-              <p className="text-[10px] text-white/80">Select a paid key to generate videos for free.</p>
-            </div>
-          </div>
-          <button
-            onClick={handleSelectKey}
-            className="px-4 py-2 bg-white text-indigo-600 text-xs font-bold rounded-xl hover:bg-zinc-100 transition-all active:scale-95 shadow-sm"
-          >
-            Select Key
-          </button>
-        </div>
-      )}
-
       {/* Drag Overlay */}
       <AnimatePresence>
         {isDragging && (
