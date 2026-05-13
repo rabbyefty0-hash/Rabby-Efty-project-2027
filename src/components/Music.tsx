@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { ChevronLeft, Play, Pause, Music as MusicIcon, Sparkles, Loader2, ListMusic, Wand2, Upload, X, SkipBack, SkipForward, Volume2, ChevronDown, Maximize2, Shuffle, Repeat } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAllFiles, VFSNode, verifyPermission, addNode } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
@@ -16,6 +16,7 @@ export function MusicApp({ onBack }: MusicProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Background Audio State
@@ -555,55 +556,141 @@ export function MusicApp({ onBack }: MusicProps) {
         )}
       </div>
 
-      {/* Player Bar */}
+      {/* Player Bar / Full Screen View */}
       <AnimatePresence>
         {currentTrack && (
           <motion.div
-            initial={{ y: 150 }}
+            layout
+            initial={{ y: "100%" }}
             animate={{ y: 0 }}
-            exit={{ y: 150 }}
-            className="absolute bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-white/10 p-4 pb-safe flex flex-col gap-3 z-20"
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className={`absolute left-0 right-0 bottom-0 z-50 bg-zinc-900/95 backdrop-blur-3xl overflow-hidden flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)] ${
+              isExpanded 
+                ? 'top-0 rounded-none pb-8' 
+                : 'h-auto rounded-t-3xl border-t border-white/10 p-4 pb-safe'
+            }`}
           >
-            {/* Progress Bar */}
-            <div className="flex items-center gap-3 text-xs text-white/50">
-              <span className="w-8 text-right">{formatTime(progress)}</span>
-              <input 
-                type="range" 
-                min={0} 
-                max={duration || 100} 
-                value={progress} 
-                onChange={handleSeek}
-                className="flex-1 h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
-              />
-              <span className="w-8">{formatTime(duration)}</span>
-            </div>
+            {isExpanded ? (
+                <div className="flex-1 flex flex-col">
+                  <div className="flex items-center justify-between p-6 pt-safe-top">
+                    <button onClick={() => setIsExpanded(false)} className="p-2 bg-black/20 hover:bg-black/40 rounded-full transition-colors backdrop-blur-md">
+                      <ChevronDown className="w-6 h-6 text-white" />
+                    </button>
+                    <div className="text-center">
+                      <p className="text-[10px] font-bold text-white/50 tracking-widest uppercase mb-1">Now Playing</p>
+                      <p className="text-xs font-semibold text-white/90 bg-white/10 px-3 py-1 rounded-full inline-block">{currentTrack.source === 'ai' ? 'AI Generated' : 'My Library'}</p>
+                    </div>
+                    <button className="p-2 bg-black/20 hover:bg-black/40 rounded-full transition-colors backdrop-blur-md">
+                      <ListMusic className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                  <MusicIcon className="w-6 h-6 text-white" />
+                  <div className="flex-1 flex items-center justify-center px-8 py-4">
+                    <motion.div 
+                      layoutId="album-art"
+                      className={`w-full max-w-[320px] aspect-square rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-all duration-700 ease-out ${isPlaying ? 'scale-100 shadow-[0_20px_50px_-12px_rgba(236,72,153,0.5)]' : 'scale-90 shadow-none'}`}
+                    >
+                      <img 
+                        src={`https://picsum.photos/seed/${encodeURIComponent(currentTrack.name)}/600/600`}
+                        alt="Album Art"
+                        className="w-full h-full object-cover"
+                        crossOrigin="anonymous"
+                      />
+                      <div className="absolute inset-0 border border-white/10 rounded-[2.5rem] pointer-events-none" />
+                    </motion.div>
+                  </div>
+
+                  <div className="px-8 pb-10 flex flex-col gap-6">
+                    <div className="flex flex-col gap-1 items-start">
+                      <h2 className="text-2xl font-bold truncate text-white w-full">{currentTrack.name}</h2>
+                      <p className="text-pink-400 text-base font-medium">{currentTrack.source === 'ai' ? 'Rabby Efty AI' : 'Unknown Artist'}</p>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <input 
+                        type="range" 
+                        min={0} 
+                        max={duration || 100} 
+                        value={progress} 
+                        onChange={handleSeek}
+                        className="w-full h-1.5 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer hover:[&::-webkit-slider-thumb]:scale-125 transition-all"
+                      />
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-white/50 tracking-wider">
+                        <span>{formatTime(progress)}</span>
+                        <span>{formatTime(duration - progress) === 'NaN:NaN' ? '' : '-' + formatTime(duration - progress)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <button className="text-white/40 hover:text-white transition-colors p-2">
+                        <Shuffle className="w-5 h-5" />
+                      </button>
+                      <div className="flex items-center gap-6">
+                        <button onClick={handlePrev} className="text-white/90 hover:text-white transition-all hover:scale-110 active:scale-95">
+                          <SkipBack className="w-10 h-10 fill-current" />
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); playTrack(currentTrack.url, currentTrack.name, currentTrack.index, currentTrack.source); }}
+                          className="w-20 h-20 flex items-center justify-center rounded-full bg-white text-black shadow-[0_8px_32px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 transition-all"
+                        >
+                          {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 ml-1.5 fill-current" />}
+                        </button>
+                        <button onClick={handleNext} className="text-white/90 hover:text-white transition-all hover:scale-110 active:scale-95">
+                          <SkipForward className="w-10 h-10 fill-current" />
+                        </button>
+                      </div>
+                      <button className="text-white/40 hover:text-white transition-colors p-2">
+                        <Repeat className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0 pr-4">
-                  <p className="font-semibold truncate text-sm">{currentTrack.name}</p>
-                  <p className="text-xs text-white/60 truncate">Now Playing</p>
+            ) : (
+              <div 
+                className="flex flex-col gap-3 cursor-pointer"
+                onClick={() => setIsExpanded(true)}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <motion.div 
+                      layoutId="album-art"
+                      className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-[10px] flex items-center justify-center shadow-lg shrink-0 overflow-hidden relative"
+                    >
+                      <div className="absolute inset-0 bg-black/10" />
+                      <MusicIcon className="w-6 h-6 text-white relative z-10" />
+                    </motion.div>
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className="font-semibold truncate text-sm text-white">{currentTrack.name}</p>
+                      <p className="text-xs text-pink-400 truncate tracking-wide">{currentTrack.source === 'ai' ? 'Rabby Efty AI' : 'Library'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 shrink-0">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); playTrack(currentTrack.url, currentTrack.name, currentTrack.index, currentTrack.source); }}
+                      className="w-12 h-12 flex items-center justify-center rounded-full bg-white text-black shadow-xl hover:scale-105 active:scale-95 transition-transform"
+                    >
+                      {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 ml-1 fill-current" />}
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleNext(); }} 
+                      className="text-white/70 hover:text-white transition-colors"
+                    >
+                      <SkipForward className="w-6 h-6 fill-current" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Progress Bar Mini */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-white/10">
+                  <div 
+                    className="h-full bg-gradient-to-r from-pink-500 to-purple-500"
+                    style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}
+                  />
                 </div>
               </div>
-              
-              <div className="flex items-center gap-4 shrink-0">
-                <button onClick={handlePrev} className="text-white/70 hover:text-white transition-colors">
-                  <SkipBack className="w-6 h-6 fill-current" />
-                </button>
-                <button 
-                  onClick={() => playTrack(currentTrack.url, currentTrack.name, currentTrack.index, currentTrack.source)}
-                  className="w-12 h-12 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 active:scale-95 transition-transform"
-                >
-                  {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 ml-1 fill-current" />}
-                </button>
-                <button onClick={handleNext} className="text-white/70 hover:text-white transition-colors">
-                  <SkipForward className="w-6 h-6 fill-current" />
-                </button>
-              </div>
-            </div>
+            )}
             
             <audio 
               ref={audioRef} 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, ArrowLeft, Wand2, Copy, Check, Loader2, Sparkles, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { FileText, ArrowLeft, Wand2, Copy, Check, Loader2, Sparkles, SlidersHorizontal, RefreshCw, Paperclip, X } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import Markdown from 'react-markdown';
 
@@ -24,6 +24,7 @@ const LENGTHS = [
 
 export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
   const [prompt, setPrompt] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState<{name: string; type: string; base64: string}[]>([]);
   const [generatedText, setGeneratedText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
@@ -32,6 +33,29 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
   
   const [tone, setTone] = useState('professional');
   const [length, setLength] = useState('medium');
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result;
+        if (typeof result === 'string') {
+          const base64 = result.split(',')[1];
+          setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, base64 }]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    // Reset the input value so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const refinePrompt = async () => {
     if (!prompt.trim()) return;
@@ -67,7 +91,7 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
   };
 
   const generateText = async () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim() && attachedFiles.length === 0) return;
     
     setIsGenerating(true);
     setError(null);
@@ -82,9 +106,22 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
       
       const fullPrompt = `Generate a ${length} text in a ${tone} tone about the following topic/prompt:\n\n${prompt}\n\nPlease format the text beautifully using markdown. Utilize headings (##, ###), bullet points, bold/italic text, and code blocks where appropriate, to make the output structured and engaging.`;
 
+      let contents: any = fullPrompt;
+      if (attachedFiles.length > 0) {
+        contents = [
+          ...attachedFiles.map(file => ({
+            inlineData: {
+              mimeType: file.type || 'application/octet-stream',
+              data: file.base64
+            }
+          })),
+          fullPrompt
+        ];
+      }
+
       const response = await ai.models.generateContent({
         model: 'gemini-3.1-pro-preview',
-        contents: fullPrompt,
+        contents: contents,
         config: {
           maxOutputTokens: 8192,
         }
@@ -155,8 +192,37 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="What should we write about today?"
-                className="w-full h-32 bg-white/5 border border-white/5 rounded-[1rem] p-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500/50 shadow-inner resize-none custom-scrollbar pb-12"
+                className="w-full min-h-[8rem] bg-white/5 border border-white/5 rounded-[1rem] p-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-blue-500/50 shadow-inner resize-y custom-scrollbar pb-12 pt-10"
               />
+              
+              <div className="absolute top-3 left-3 right-3 flex flex-wrap gap-2 pointer-events-none">
+                {attachedFiles.map((file, i) => (
+                  <div key={i} className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md rounded-lg pl-2 pr-1 py-1 pointer-events-auto border border-white/10 shadow-lg">
+                    <span className="text-xs text-white/80 max-w-[100px] truncate">{file.name}</span>
+                    <button onClick={() => removeFile(i)} className="p-0.5 hover:bg-white/10 rounded-full transition-colors">
+                      <X className="w-3 h-3 text-white/60 hover:text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="absolute bottom-3 left-3">
+                <input
+                  type="file"
+                  id="file-upload"
+                  className="hidden"
+                  multiple
+                  onChange={handleFileUpload}
+                />
+                <label 
+                  htmlFor="file-upload"
+                  className="cursor-pointer p-1.5 bg-white/5 hover:bg-white/10 text-white/60 hover:text-white rounded-lg transition-colors flex items-center justify-center border border-transparent hover:border-white/10"
+                  title="Attach files (PDF, images, etc.)"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </label>
+              </div>
+
               <button
                 onClick={refinePrompt}
                 disabled={!prompt.trim() || isRefining || isGenerating}
@@ -201,9 +267,9 @@ export function TextGenerator({ onBack, isVpnConnected }: TextGeneratorProps) {
             <div className="flex items-center gap-3 pt-2">
               <button 
                 onClick={generateText}
-                disabled={!prompt.trim() || isGenerating}
+                disabled={(!prompt.trim() && attachedFiles.length === 0) || isGenerating}
                 className={`flex-1 h-[3.5rem] rounded-[1rem] font-medium tracking-wide flex items-center justify-center gap-2 transition-all ${
-                  !prompt.trim() || isGenerating ? 'bg-blue-600/50 text-white/50' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
+                  (!prompt.trim() && attachedFiles.length === 0) || isGenerating ? 'bg-blue-600/50 text-white/50' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/25'
                 }`}
               >
                  {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Wand2 className="w-4 h-4" /> Generate Text</>}

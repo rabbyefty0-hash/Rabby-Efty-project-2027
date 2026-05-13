@@ -44,13 +44,15 @@ const ContactsApp = lazy(() => import('./components/ContactsApp').then(m => ({ d
 const YouTubeApp = lazy(() => import('./components/YouTubeApp').then(m => ({ default: m.default })));
 const AiSearch = lazy(() => import('./components/AiSearch').then(m => ({ default: m.AiSearch })));
 const ImageGenerator = lazy(() => import('./components/ImageGenerator').then(m => ({ default: m.ImageGenerator })));
+const MediaPlayer = lazy(() => import('./components/MediaPlayer').then(m => ({ default: m.MediaPlayer })));
 
 const TextGenerator = lazy(() => import('./components/TextGenerator').then(m => ({ default: m.TextGenerator })));
 
-type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search' | 'text-gen';
+type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search' | 'text-gen' | 'media-player';
 
 export const APPS = [
   { id: 'ai-search', name: 'AI Search', icon: Search, color: 'text-orange-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'media-player', name: 'Media Player', icon: Play, color: 'text-indigo-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'image', name: 'AI Image', icon: Wand2, color: 'text-purple-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'text-gen', name: 'AI Writer', icon: FileText, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'video', name: 'Video', icon: Video, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -198,7 +200,7 @@ function AppContent() {
     const saved = localStorage.getItem('theme');
     return (saved as 'light' | 'dark') || 'dark';
   });
-  const { iconShape, wallpaperUrl, setWallpaperUrl } = useTheme();
+  const { iconShape, setIconShape, wallpaperUrl, setWallpaperUrl } = useTheme();
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -606,7 +608,7 @@ function AppContent() {
                 className="col-span-2 bg-white/10 dark:bg-white/5 rounded-3xl p-4 flex items-center justify-between backdrop-blur-md border border-white/10"
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${getIconShapeClass()} flex items-center justify-center ${theme === 'dark' ? 'bg-indigo-500' : 'bg-orange-400'}`}>
+                  <div className={`w-10 h-10 flex items-center justify-center transition-all ${getIconShapeClass()} ${theme === 'dark' ? 'bg-indigo-500' : 'bg-orange-400'}`}>
                     {theme === 'dark' ? <Moon className="w-5 h-5 text-white" /> : <Sun className="w-5 h-5 text-white" />}
                   </div>
                   <span className="text-white font-medium">Dark Mode</span>
@@ -615,6 +617,22 @@ function AppContent() {
                   <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform ${theme === 'dark' ? 'translate-x-5' : 'translate-x-0'}`} />
                 </div>
               </button>
+
+              {/* Icon Shape */}
+              <div className="col-span-2 bg-white/10 dark:bg-white/5 rounded-3xl p-4 backdrop-blur-md border border-white/10 flex flex-col gap-3">
+                <span className="text-white/80 font-medium text-sm">Icon Shape</span>
+                <div className="flex bg-black/20 rounded-2xl p-1">
+                  {(['circle', 'squircle', 'square'] as const).map(shape => (
+                    <button
+                      key={shape}
+                      onClick={() => setIconShape(shape)}
+                      className={`flex-1 py-2.5 text-xs font-medium rounded-xl capitalize transition-colors ${iconShape === shape ? 'bg-white/20 text-white shadow-sm' : 'text-white/50 hover:text-white/80'}`}
+                    >
+                      {shape}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             
             <div className="mt-auto flex justify-center pb-8">
@@ -925,6 +943,7 @@ function AppContent() {
                   {activeTab === 'maps' && <MapsApp onBack={handleBack} />}
                   {activeTab === 'camera' && <CameraApp onClose={() => handleNavigate('home')} />}
                   {activeTab === 'contacts' && <ContactsApp onBack={handleBack} />}
+                  {activeTab === 'media-player' && <MediaPlayer onBack={handleBack} />}
                   {activeTab === 'status' && <SystemStatus 
                     isVpnConnected={isVpnConnected} 
                     theme={theme}

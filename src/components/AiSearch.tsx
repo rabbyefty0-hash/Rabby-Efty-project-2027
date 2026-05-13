@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Globe, Sparkles, Loader2, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Search, Globe, Sparkles, Loader2, ArrowLeft, ExternalLink, Copy, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { GoogleGenAI } from '@google/genai';
@@ -14,6 +14,7 @@ export function AiSearch({ onBack }: AiSearchProps) {
   const [result, setResult] = useState<string | null>(null);
   const [sources, setSources] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,6 +24,7 @@ export function AiSearch({ onBack }: AiSearchProps) {
     setError(null);
     setResult(null);
     setSources([]);
+    setIsCopied(false);
 
     try {
       const apiKey = process.env.GEMINI_API_KEY;
@@ -58,6 +60,14 @@ export function AiSearch({ onBack }: AiSearchProps) {
       setError(err.message || 'An error occurred while searching.');
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (result) {
+      navigator.clipboard.writeText(result);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
@@ -139,15 +149,34 @@ export function AiSearch({ onBack }: AiSearchProps) {
 
           {/* Results Area */}
           <AnimatePresence mode="wait">
-            {result && (
+            {isSearching && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex flex-col items-center justify-center py-20 text-white/60 space-y-4"
+              >
+                <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
+                <p>Analyzing search results and generating summary...</p>
+              </motion.div>
+            )}
+
+            {!isSearching && result && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-6"
               >
-                <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-xl">
-                  <div className="flex items-center space-x-2 mb-4 pb-4 border-b border-white/10">
+                <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-xl relative">
+                  <button
+                    onClick={copyToClipboard}
+                    className="absolute top-6 right-6 p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                    title="Copy to clipboard"
+                  >
+                    {isCopied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
+                  </button>
+                  <div className="flex items-center space-x-2 mb-4 pb-4 border-b border-white/10 pr-12">
                     <Sparkles className="w-5 h-5 text-blue-400" />
                     <h2 className="text-lg font-medium text-white">AI Summary</h2>
                   </div>

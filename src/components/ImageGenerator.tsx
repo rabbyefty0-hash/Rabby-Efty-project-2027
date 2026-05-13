@@ -373,25 +373,39 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-5 custom-scrollbar pb-32">
-        <div className="max-w-3xl mx-auto space-y-8">
+        <div className="max-w-3xl mx-auto space-y-6">
           
           {/* Main Control Hub */}
-          <div className="flex flex-col items-center justify-center pt-8 pb-4 space-y-6">
-            <div className="w-20 h-20 bg-[#1A1A1A] rounded-3xl flex items-center justify-center border border-white/5">
-              <ImageIcon className="w-10 h-10 text-indigo-400" />
-            </div>
-            <p className="text-sm text-center text-white/70 max-w-xs font-medium leading-relaxed">
+          <div className="flex flex-col items-center justify-center pt-8 pb-2 space-y-6">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="relative"
+            >
+              <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full" />
+              <div className="w-24 h-24 bg-gradient-to-b from-[#222] to-[#111] rounded-3xl flex items-center justify-center border border-white/10 shadow-2xl relative z-10 overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <ImageIcon className="w-10 h-10 text-indigo-400 drop-shadow-[0_0_15px_rgba(129,140,248,0.5)] group-hover:scale-110 transition-transform duration-500" />
+              </div>
+            </motion.div>
+            <p className="text-[15px] text-center text-white/60 max-w-sm font-medium leading-relaxed tracking-wide">
               Describe what you want to see, or upload an image to edit and enhance it.
             </p>
           </div>
 
-          <div className="bg-[#111111]/80 backdrop-blur-3xl rounded-[2rem] p-4 space-y-3 border border-white/5 shadow-2xl relative mx-auto max-w-sm w-full">
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-[#151515] rounded-[2.5rem] p-5 space-y-4 border border-white/[0.08] shadow-[0_0_50px_rgba(0,0,0,0.5)] relative mx-auto max-w-[420px] w-full"
+          >
             {referenceImage && (
-              <div className="bg-[#222] p-2 rounded-2xl flex items-center justify-between">
-                <img src={referenceImage.url} alt="Reference" className="w-10 h-10 rounded-xl object-cover border border-white/20" />
+              <div className="bg-[#222] p-2 rounded-2xl flex items-center justify-between border border-white/5">
+                <img src={referenceImage.url} alt="Reference" className="w-12 h-12 rounded-[0.8rem] object-cover border border-white/20" />
                 <button 
                   onClick={() => setReferenceImage(null)}
-                  className="p-2 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-colors"
+                  className="p-2.5 hover:bg-rose-500/20 text-rose-500 rounded-[0.8rem] transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -399,38 +413,87 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
             )}
             
             <div className="flex items-center gap-3">
-              <label className="w-[3.5rem] h-[3.5rem] shrink-0 bg-white/5 hover:bg-white/10 transition-colors rounded-[1rem] flex items-center justify-center cursor-pointer border border-white/5 shadow-inner">
-                <Upload className="w-5 h-5 text-indigo-400" />
+              <label className="w-[3.75rem] h-[3.75rem] shrink-0 bg-[#222] hover:bg-[#2a2a2a] transition-colors rounded-[1.25rem] flex items-center justify-center cursor-pointer border border-white/5 shadow-inner group">
+                <Upload className="w-5 h-5 text-white/70 group-hover:text-indigo-400 group-hover:-translate-y-0.5 transition-all" />
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
               </label>
               
-              <input
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Ask ৡRABBY EFTYৡ"
-                className="flex-1 bg-white/5 border border-white/5 rounded-[1rem] h-[3.5rem] px-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-indigo-500/50 shadow-inner min-w-0"
-              />
+              <div className="flex-1 relative group">
+                <input
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Ask ৡRABBY EFTYৡ"
+                  className="w-full bg-[#222] border border-white/5 rounded-[1.25rem] h-[3.75rem] px-5 text-[15px] text-white placeholder:text-white/40 focus:outline-none focus:border-indigo-500/50 focus:bg-[#2a2a2a] shadow-inner transition-colors pr-12"
+                />
+              </div>
               
-              <button className="w-[3.5rem] h-[3.5rem] shrink-0 bg-white/5 hover:bg-white/10 transition-colors rounded-[1rem] flex items-center justify-center border border-white/5 text-amber-400 shadow-inner">
-                <Zap className="w-5 h-5" />
+              <button 
+                onClick={() => {
+                  const prompts = [
+                    "A cyberpunk city in the rain, neon lights reflections", 
+                    "A majestic lion with glowing quantum fur",
+                    "A cinematic portrait of a futuristic samurai",
+                    "An ancient temple hidden in a bioluminescent jungle",
+                    "A solitary astronaut exploring a crystalline alien landscape"
+                  ];
+                  setPrompt(prompts[Math.floor(Math.random() * prompts.length)]);
+                }}
+                className="w-[3.75rem] h-[3.75rem] shrink-0 bg-[#222] hover:bg-[#2a2a2a] hover:border-amber-500/30 transition-all rounded-[1.25rem] flex items-center justify-center border border-white/5 text-amber-400 shadow-inner group"
+                title="Surprise me with a prompt"
+              >
+                <Sparkles className="w-5 h-5 group-hover:scale-110 transition-transform" />
               </button>
             </div>
             
+            <div className="flex flex-col gap-2 mb-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] uppercase font-bold text-white/50 tracking-widest">Aesthetic Style</span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-1">
+                {STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => setSelectedStyle(style.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[0.8rem] text-xs font-medium whitespace-nowrap transition-all border ${
+                      selectedStyle === style.id 
+                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
+                        : 'bg-[#222] text-white/50 border-white/5 hover:bg-[#2a2a2a] hover:text-white/80'
+                    }`}
+                  >
+                    <style.icon className="w-3.5 h-3.5" />
+                    {style.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between px-1 mt-1">
+                <span className="text-[10px] uppercase font-bold text-white/50 tracking-widest">Aspect Ratio</span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 px-1">
+                {(['1:1', '16:9', '9:16', '3:4', '4:3'] as const).map((ratio) => (
+                  <button
+                    key={ratio}
+                    onClick={() => setAspectRatio(ratio)}
+                    className={`px-4 py-1.5 rounded-[0.8rem] text-xs font-bold whitespace-nowrap transition-all border ${
+                      aspectRatio === ratio
+                        ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
+                        : 'bg-[#222] text-white/50 border-white/5 hover:bg-[#2a2a2a] hover:text-white/80'
+                    }`}
+                  >
+                    {ratio}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setSelectedStyle(selectedStyle === 'none' ? 'photorealistic' : 'none')}
-                className={`w-[3.5rem] h-[3.5rem] shrink-0 transition-colors rounded-[1rem] flex items-center justify-center border border-white/5 shadow-inner ${selectedStyle !== 'none' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/5 hover:bg-white/10 text-white/50'}`}
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </button>
-              
               {referenceImage ? (
                 <>
                   <button 
                     onClick={handleAiEdit}
                     disabled={!prompt.trim() || isGenerating}
-                    className={`flex-1 h-[3.5rem] rounded-[1rem] font-medium tracking-wide flex items-center justify-center transition-all ${
-                      !prompt.trim() || isGenerating ? 'bg-purple-600/50 text-white/50' : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/25'
+                    className={`flex-1 h-[3.75rem] rounded-[1.25rem] font-bold tracking-wide flex items-center justify-center transition-all duration-300 ${
+                      !prompt.trim() || isGenerating ? 'bg-[#222] text-white/30 border border-white/5' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(139,92,246,0.4)] border border-purple-500/50'
                     }`}
                   >
                      {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "AI Edit"}
@@ -438,8 +501,8 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                   <button 
                     onClick={generateImage}
                     disabled={!prompt.trim() || isGenerating}
-                    className={`flex-1 h-[3.5rem] rounded-[1rem] font-medium tracking-wide flex items-center justify-center transition-all ${
-                      !prompt.trim() || isGenerating ? 'bg-indigo-600/50 text-white/50' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25'
+                    className={`flex-1 h-[3.75rem] rounded-[1.25rem] font-bold tracking-wide flex items-center justify-center transition-all duration-300 ${
+                      !prompt.trim() || isGenerating ? 'bg-[#222] text-white/30 border border-white/5' : 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-500/50'
                     }`}
                   >
                      {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Generate"}
@@ -449,19 +512,33 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                 <button 
                   onClick={generateImage}
                   disabled={!prompt.trim() || isGenerating}
-                  className={`flex-1 h-[3.5rem] rounded-[1rem] font-medium tracking-wide flex items-center justify-center transition-all ${
-                    !prompt.trim() || isGenerating ? 'bg-indigo-600/50 text-white/50' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25'
+                  className={`w-full h-[3.75rem] rounded-[1.25rem] font-bold text-[16px] tracking-wide flex items-center justify-center transition-all duration-300 overflow-hidden relative group ${
+                    !prompt.trim() || isGenerating ? 'bg-[#222] text-white/30 border border-white/5' : 'text-white'
                   }`}
                 >
-                   {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Generate"}
+                  {(!prompt.trim() || isGenerating) ? null : (
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#4f46e5] via-[#7c3aed] to-[#4f46e5] bg-[length:200%_auto] animate-gradient hover:bg-[length:100%_auto] transition-all" />
+                  )}
+                  <span className="relative z-10 flex items-center gap-2">
+                    {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : "Generate"}
+                  </span>
                 </button>
               )}
             </div>
             
-            {status && (
-               <p className="text-center text-xs text-indigo-400 font-medium animate-pulse mt-2">{status}</p>
-            )}
-          </div>
+            <AnimatePresence>
+              {status && (
+                <motion.p 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-center text-[12px] text-indigo-400 font-bold uppercase tracking-widest animate-pulse mt-2"
+                >
+                  {status}
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
           <div className="flex justify-center pt-2">
             <button 
@@ -474,9 +551,9 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                 ];
                 setPrompt(prompts[Math.floor(Math.random() * prompts.length)]);
               }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 text-white/80 text-[13px] font-medium transition-colors"
+              className="flex items-center gap-2 px-6 py-3 bg-[#111] hover:bg-[#1a1a1a] rounded-[1.25rem] border border-white/10 text-white/80 text-[14px] font-medium transition-all shadow-lg hover:shadow-indigo-500/10 group"
             >
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <Sparkles className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
               Surprise Me
             </button>
           </div>
