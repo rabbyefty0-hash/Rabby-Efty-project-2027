@@ -217,16 +217,32 @@ export function CloudSyncDashboard({
         </div>
 
         {syncStatus.isSyncing && (
-          <div className="w-full space-y-1.5" id="sync-progress-details">
+          <div className="w-full space-y-2.5" id="sync-progress-details">
             <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-full h-2.5 overflow-hidden">
               <div 
                 className="bg-blue-500 h-full transition-all duration-300 rounded-full" 
                 style={{ width: `${syncStatus.progress}%` }}
               />
             </div>
-            <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider font-mono">
-              Replication Progress: {syncStatus.progress}% Completed
-            </p>
+            
+            <div className="flex justify-between items-center text-[10px] font-semibold text-zinc-400 font-mono tracking-wider">
+              <span>REPLICATION PROGRESS: {syncStatus.progress}%</span>
+              {(syncStatus.uploadSpeed || syncStatus.timeRemaining) && (
+                <div className="flex gap-2.5 items-center">
+                  {syncStatus.uploadSpeed && (
+                    <span className="text-blue-500 bg-blue-500/10 dark:bg-blue-500/20 px-1.5 py-0.5 rounded flex items-center gap-1 font-bold">
+                      <span className="w-1 h-1 rounded-full bg-blue-500 animate-pulse"></span>
+                      {syncStatus.uploadSpeed}
+                    </span>
+                  )}
+                  {syncStatus.timeRemaining && (
+                    <span className="text-zinc-650 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-805 px-1.5 py-0.5 rounded font-bold">
+                      {syncStatus.timeRemaining}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

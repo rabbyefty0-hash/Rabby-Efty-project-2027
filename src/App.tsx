@@ -237,6 +237,34 @@ function AppContent() {
     return () => window.removeEventListener('wallpaper-updated', handleWallpaperChange);
   }, []);
 
+  useEffect(() => {
+    const handleChatSessionsUpdate = () => {
+      const saved = localStorage.getItem('chatSessions');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setChatSessions(parsed.map((s: any) => ({
+            ...s,
+            messages: s.messages.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            }))
+          })));
+          if (parsed.length > 0) {
+            setCurrentSessionId(parsed[0].id);
+          } else {
+            setCurrentSessionId('default');
+          }
+          return;
+        } catch (e) {}
+      }
+      setChatSessions([{ id: 'default', title: 'New Conversation', messages: [], updatedAt: Date.now() }]);
+      setCurrentSessionId('default');
+    };
+    window.addEventListener('chatSessions-updated', handleChatSessionsUpdate);
+    return () => window.removeEventListener('chatSessions-updated', handleChatSessionsUpdate);
+  }, []);
+
   // Dynamic Island Auto-collapse
   useEffect(() => {
     if (isDynamicIslandExpanded) {

@@ -88,6 +88,19 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
     }
   }, [generatedImages]);
 
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const saved = localStorage.getItem('generatedImages');
+        setGeneratedImages(saved ? JSON.parse(saved) : []);
+      } catch {
+        setGeneratedImages([]);
+      }
+    };
+    window.addEventListener('generatedImages-updated', handleUpdate);
+    return () => window.removeEventListener('generatedImages-updated', handleUpdate);
+  }, []);
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

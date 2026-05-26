@@ -116,4 +116,11 @@ export const renameNode = async (id: string, newName: string): Promise<void> => 
   }
 };
 
+export const clearVFS = async (): Promise<void> => {
+  const db = await initVFS();
+  await db.clear('nodes');
+  await db.clear('handles');
+  window.dispatchEvent(new Event('vfs-updated'));
+};
+
 export const generateId = () => Math.random().toString(36).substring(2, 15);

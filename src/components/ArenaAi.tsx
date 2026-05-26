@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Swords, Send, ShieldCheck, Bot, Loader2, Sparkles, Image as ImageIcon, Type, Upload, X } from 'lucide-react';
+import { Swords, Send, ShieldCheck, Bot, Loader2, Sparkles, Image as ImageIcon, Type, Upload, X, Download, HardDrive } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { compareModels, ArenaResult } from '../services/gemini';
 import { UploadedFile } from '../types';
+import { addNode, generateId } from '../lib/vfs';
 
 const MODELS = [
   { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash' },
@@ -101,6 +102,40 @@ export function ArenaAi({ isVpnConnected, onBack }: ArenaAiProps) {
     } finally {
       setIsComparing(false);
     }
+  };
+
+  const handleSaveToVfs = async (dataUrl: string, side: 'A' | 'B') => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      
+      const fileId = generateId();
+      await addNode({
+        id: fileId,
+        name: `Arena_AI_${side}_${Date.now()}.jpg`,
+        type: 'file',
+        parentId: null,
+        data: blob,
+        mimeType: 'image/jpeg',
+        size: blob.size,
+        createdAt: Date.now(),
+        modifiedAt: Date.now()
+      });
+      alert(`Successfully saved Image ${side} to local VFS storage (VFS Media / Gallery)!`);
+      window.dispatchEvent(new Event('vfs-updated'));
+    } catch (e) {
+      console.error("Failed to save to VFS storage", e);
+      alert("Failed to save to local storage.");
+    }
+  };
+
+  const handleDownloadLocally = (dataUrl: string, side: 'A' | 'B') => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `Arena_AI_Generated_${side}_${Date.now()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (
@@ -291,7 +326,23 @@ export function ArenaAi({ isVpnConnected, onBack }: ArenaAiProps) {
                 <div className="p-4 flex-1 overflow-y-auto prose prose-sm max-w-none text-zinc-700">
                   {mode === 'image' ? (
                     result.modelA.image ? (
-                      <img src={result.modelA.image} alt="Generated A" className="w-full h-auto rounded-lg shadow-md" />
+                      <div className="space-y-4">
+                        <img src={result.modelA.image} alt="Generated A" className="w-full h-auto rounded-lg shadow-md" />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDownloadLocally(result.modelA.image!, 'A')}
+                            className="flex-1 bg-zinc-100 hover:bg-zinc-200 active:scale-95 text-zinc-800 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download
+                          </button>
+                          <button
+                            onClick={() => handleSaveToVfs(result.modelA.image!, 'A')}
+                            className="flex-1 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                          >
+                            <HardDrive className="w-3.5 h-3.5" /> Save to Storage
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <p className="text-zinc-500 italic">No image generated.</p>
                     )
@@ -312,7 +363,23 @@ export function ArenaAi({ isVpnConnected, onBack }: ArenaAiProps) {
                 <div className="p-4 flex-1 overflow-y-auto prose prose-sm max-w-none text-zinc-700">
                   {mode === 'image' ? (
                     result.modelB.image ? (
-                      <img src={result.modelB.image} alt="Generated B" className="w-full h-auto rounded-lg shadow-md" />
+                      <div className="space-y-4">
+                        <img src={result.modelB.image} alt="Generated B" className="w-full h-auto rounded-lg shadow-md" />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDownloadLocally(result.modelB.image!, 'B')}
+                            className="flex-1 bg-zinc-100 hover:bg-zinc-200 active:scale-95 text-zinc-800 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download
+                          </button>
+                          <button
+                            onClick={() => handleSaveToVfs(result.modelB.image!, 'B')}
+                            className="flex-1 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                          >
+                            <HardDrive className="w-3.5 h-3.5" /> Save to Storage
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <p className="text-zinc-500 italic">No image generated.</p>
                     )

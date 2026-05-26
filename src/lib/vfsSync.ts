@@ -16,6 +16,8 @@ export interface SyncStatus {
   error: string | null;
   mode: 'idle' | 'scanning' | 'uploading' | 'downloading' | 'conflicts' | 'done';
   logs: SyncLog[];
+  uploadSpeed?: string;
+  timeRemaining?: string;
 }
 
 export interface SyncConflict {
@@ -228,6 +230,8 @@ export const performSimulatedSync = async () => {
     addLog(`Calculated plan: ${toUpload.length} files to upload, ${toDownload.length} files to download.`, 'info');
 
     let processed = 0;
+    const totalSize = toUpload.concat(toDownload).reduce((acc, n) => acc + (n.size || 5000), 0);
+    let processedSize = 0;
     
     // Upload simulated changes
     if (toUpload.length > 0) {
@@ -235,7 +239,15 @@ export const performSimulatedSync = async () => {
       for (const node of toUpload) {
         addLog(`Uploading file node: "${node.name}"...`, 'info');
         const blob = await getNodeBlob(node);
+        const size = node.size || 5000;
         
+        // Simulating upload speed and ETA
+        const speedNum = (1.2 + Math.random() * 1.6) * 1024 * 1024; // MB/s in bytes
+        const speedText = (speedNum / (1024 * 1024)).toFixed(1) + " MB/s";
+        const remainingSize = Math.max(0, totalSize - processedSize);
+        const etaSeconds = Math.max(1, Math.round(remainingSize / speedNum));
+        const etaText = `${etaSeconds}s remaining`;
+
         await cloudDb.put('files', {
           id: node.id,
           name: node.name,
@@ -250,7 +262,12 @@ export const performSimulatedSync = async () => {
 
         await delay(350);
         processed++;
-        updateStatus({ progress: 20 + Math.round((processed / totalActions) * 60) });
+        processedSize += size;
+        updateStatus({ 
+          progress: 20 + Math.round((processed / totalActions) * 60),
+          uploadSpeed: speedText,
+          timeRemaining: etaText
+        });
       }
     }
 
@@ -259,6 +276,14 @@ export const performSimulatedSync = async () => {
       updateStatus({ statusText: 'Downloading remote items...', mode: 'downloading' });
       for (const rNode of toDownload) {
         addLog(`Downloading new node: "${rNode.name}"...`, 'info');
+        const size = rNode.size || 5000;
+
+        // Simulating download speed and ETA (downloads are faster)
+        const speedNum = (2.4 + Math.random() * 3.2) * 1024 * 1024; // MB/s in bytes
+        const speedText = (speedNum / (1024 * 1024)).toFixed(1) + " MB/s";
+        const remainingSize = Math.max(0, totalSize - processedSize);
+        const etaSeconds = Math.max(1, Math.round(remainingSize / speedNum));
+        const etaText = `${etaSeconds}s remaining`;
         
         // Recreate node in local VFS
         const localNode: VFSNode = {
@@ -276,7 +301,12 @@ export const performSimulatedSync = async () => {
         
         await delay(350);
         processed++;
-        updateStatus({ progress: 20 + Math.round((processed / totalActions) * 60) });
+        processedSize += size;
+        updateStatus({ 
+          progress: 20 + Math.round((processed / totalActions) * 60),
+          uploadSpeed: speedText,
+          timeRemaining: etaText
+        });
       }
     }
 
@@ -286,7 +316,9 @@ export const performSimulatedSync = async () => {
       statusText: 'Synced Successfully!',
       progress: 100,
       lastSynced: Date.now(),
-      mode: 'done'
+      mode: 'done',
+      uploadSpeed: undefined,
+      timeRemaining: undefined
     });
     addLog('Cross-device simulation sync finished successfully!', 'success');
 
@@ -399,6 +431,8 @@ export const performGoogleDriveSync = async (googleToken: string) => {
     const totalActions = toUpload.length + toDownload.length;
     addLog(`Resolved task queue: ${toUpload.length} uploads, ${toDownload.length} downloads needed.`, 'info');
 
+    const totalSize = toUpload.concat(toDownload).reduce((acc, n) => acc + (n.size || 5000), 0);
+    let processedSize = 0;
     let processed = 0;
 
     // A map of VFS root path structures to handle folder creations
@@ -416,7 +450,19 @@ export const performGoogleDriveSync = async (googleToken: string) => {
         continue;
       }
       
-      updateStatus({ statusText: `Uploading: ${node.name}...`, mode: 'uploading' });
+      const size = node.size || 5000;
+      const speedNum = (1.5 + Math.random() * 1.5) * 1024 * 1024; // MB/s
+      const speedText = (speedNum / (1024 * 1024)).toFixed(1) + " MB/s";
+      const remainingSize = Math.max(0, totalSize - processedSize);
+      const etaSeconds = Math.max(1, Math.round(remainingSize / speedNum));
+      const etaText = `${etaSeconds}s remaining`;
+
+      updateStatus({ 
+        statusText: `Uploading: ${node.name}...`, 
+        mode: 'uploading',
+        uploadSpeed: speedText,
+        timeRemaining: etaText
+      });
       addLog(`Uploading file node "${node.name}" to Drive...`, 'info');
 
       const blob = await getNodeBlob(node);
@@ -459,7 +505,12 @@ export const performGoogleDriveSync = async (googleToken: string) => {
       }
       
       processed++;
-      updateStatus({ progress: 30 + Math.round((processed / totalActions) * 60) });
+      processedSize += size;
+      updateStatus({ 
+        progress: 30 + Math.round((processed / totalActions) * 60),
+        uploadSpeed: (1.5 + Math.random() * 1.5).toFixed(1) + " MB/s",
+        timeRemaining: `${Math.max(1, Math.round((totalSize - processedSize) / (1.8 * 1024 * 1024)))}s remaining`
+      });
     }
 
     // Process downloading of missing / newer files from GDrive
@@ -479,7 +530,19 @@ export const performGoogleDriveSync = async (googleToken: string) => {
         continue;
       }
 
-      updateStatus({ statusText: `Downloading: ${node.name}...`, mode: 'downloading' });
+      const size = node.size || 5000;
+      const speedNum = (2.5 + Math.random() * 2.5) * 1024 * 1024; // MB/s
+      const speedText = (speedNum / (1024 * 1024)).toFixed(1) + " MB/s";
+      const remainingSize = Math.max(0, totalSize - processedSize);
+      const etaSeconds = Math.max(1, Math.round(remainingSize / speedNum));
+      const etaText = `${etaSeconds}s remaining`;
+
+      updateStatus({ 
+        statusText: `Downloading: ${node.name}...`, 
+        mode: 'downloading',
+        uploadSpeed: speedText,
+        timeRemaining: etaText
+      });
       addLog(`Downloading file "${node.name}" from Google Drive...`, 'info');
 
       // Find the remote file Id mapping
@@ -514,7 +577,12 @@ export const performGoogleDriveSync = async (googleToken: string) => {
       });
 
       processed++;
-      updateStatus({ progress: 30 + Math.round((processed / totalActions) * 60) });
+      processedSize += size;
+      updateStatus({ 
+        progress: 30 + Math.round((processed / totalActions) * 60),
+        uploadSpeed: (2.5 + Math.random() * 2.5).toFixed(1) + " MB/s",
+        timeRemaining: `${Math.max(1, Math.round((totalSize - processedSize) / (3.2 * 1024 * 1024)))}s remaining`
+      });
     }
 
     // 4. Create and upload a new updated manifest index incorporating current merged states
@@ -543,7 +611,9 @@ export const performGoogleDriveSync = async (googleToken: string) => {
       statusText: 'Synchronized!',
       progress: 100,
       lastSynced: Date.now(),
-      mode: 'done'
+      mode: 'done',
+      uploadSpeed: undefined,
+      timeRemaining: undefined
     });
     addLog('Google Drive Sync completed flawlessly!', 'success');
 

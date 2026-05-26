@@ -26,6 +26,9 @@ export function FileManager({ onBack }: FileManagerProps) {
   const [nodes, setNodes] = useState<VFSNode[]>([]);
   const [isConnectingDevice, setIsConnectingDevice] = useState(false);
   const [selectedNode, setSelectedNode] = useState<VFSNode | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, node: VFSNode } | null>(null);
+  const [renamingNode, setRenamingNode] = useState<VFSNode | null>(null);
+  const [newNameInput, setNewNameInput] = useState('');
   const [previewNode, setPreviewNode] = useState<VFSNode | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -645,58 +648,52 @@ export function FileManager({ onBack }: FileManagerProps) {
                 <span className="text-[10px] text-blue-500 font-medium">{Math.round(file.progress)}%</span>
               </div>
             ))}
-            {nodes.map(node => (
+             {nodes.map(node => (
               <div 
                 key={node.id} 
                 className="flex flex-col items-center gap-2 relative group"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({ x: e.clientX, y: e.clientY, node });
+                }}
               >
-                <button 
-                  onClick={() => openPreview(node)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setSelectedNode(node);
-                  }}
-                  className="w-full aspect-square bg-white dark:bg-zinc-900 rounded-2xl flex items-center justify-center shadow-sm hover:scale-95 transition-transform"
-                >
-                  {getIcon(node)}
-                </button>
+                <div className="w-full aspect-square bg-white dark:bg-zinc-900 rounded-2xl flex items-center justify-center shadow-sm relative group hover:scale-[1.02] transition-all border border-black/5 dark:border-white/5 overflow-hidden">
+                  <button 
+                    onClick={() => openPreview(node)}
+                    className="w-full h-full flex items-center justify-center"
+                  >
+                    {getIcon(node)}
+                  </button>
+
+                  {/* Hover Quick Actions */}
+                  <div className="absolute top-2 right-2 flex gap-1 bg-black/60 dark:bg-zinc-950/80 p-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-150 backdrop-blur-md">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNewNameInput(node.name);
+                        setRenamingNode(node);
+                      }}
+                      className="p-1.5 hover:bg-white/20 rounded-lg text-white transition-colors"
+                      title="Rename"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(node.id);
+                      }}
+                      className="p-1.5 hover:bg-rose-500/30 rounded-lg text-rose-400 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
                 <span className="text-xs text-center line-clamp-2 font-medium break-all px-1">
                   {node.name}
                 </span>
                 {node.size && <span className="text-[10px] text-gray-500">{formatSize(node.size)}</span>}
-
-                {/* Context Menu Overlay (Simplified) */}
-                {selectedNode?.id === node.id && (
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-black/5 dark:border-white/10 z-20 w-40 overflow-hidden">
-                    {node.type === 'file' && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShare(node);
-                          setSelectedNode(null);
-                        }}
-                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/5 dark:border-white/10"
-                      >
-                        <Share className="w-4 h-4" /> Share
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => {
-                        const newName = prompt('Rename:', node.name);
-                        if (newName) handleRename(node.id, newName);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/5 dark:border-white/10"
-                    >
-                      <Edit2 className="w-4 h-4" /> Rename
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(node.id)}
-                      className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 text-red-500"
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
             {nodes.length === 0 && uploadingFiles.length === 0 && (
@@ -750,64 +747,53 @@ export function FileManager({ onBack }: FileManagerProps) {
                 onClick={() => openPreview(node)}
                 onContextMenu={(e) => {
                   e.preventDefault();
-                  setSelectedNode(node);
+                  setContextMenu({ x: e.clientX, y: e.clientY, node });
                 }}
               >
                 <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
                   {getIcon(node)}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 pr-24">
                   <p className="text-sm font-medium truncate">{node.name}</p>
                   <p className="text-xs text-gray-500">
                     {node.type === 'folder' ? 'Folder' : formatSize(node.size)} • {new Date(node.createdAt).toLocaleDateString()}
                   </p>
                 </div>
+
+                {/* Hover Quick Actions in List Mode */}
+                <div className="absolute right-12 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-gray-100 dark:bg-zinc-800 p-1 rounded-xl">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setNewNameInput(node.name);
+                      setRenamingNode(node);
+                    }}
+                    className="p-1.5 hover:bg-gray-200 dark:hover:bg-zinc-700 rounded-lg text-gray-600 dark:text-zinc-300 transition-colors"
+                    title="Rename"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(node.id);
+                    }}
+                    className="p-1.5 hover:bg-rose-500/10 hover:text-rose-500 rounded-lg text-rose-500/70 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedNode(node);
+                    setContextMenu({ x: e.clientX, y: e.clientY, node });
                   }}
-                  className="p-2 text-gray-400 hover:text-blue-500"
+                  className="p-2 text-gray-400 hover:text-blue-500 absolute right-3"
                 >
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
-
-                {/* Context Menu Overlay */}
-                {selectedNode?.id === node.id && (
-                  <div className="absolute right-12 top-1/2 -translate-y-1/2 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border border-black/5 dark:border-white/10 z-20 w-40 overflow-hidden">
-                    {node.type === 'file' && (
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShare(node);
-                          setSelectedNode(null);
-                        }}
-                        className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/5 dark:border-white/10"
-                      >
-                        <Share className="w-4 h-4" /> Share
-                      </button>
-                    )}
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const newName = prompt('Rename:', node.name);
-                        if (newName) handleRename(node.id, newName);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/5 dark:border-white/10"
-                    >
-                      <Edit2 className="w-4 h-4" /> Rename
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(node.id);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 text-red-500"
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete
-                    </button>
-                  </div>
-                )}
               </div>
             ))}
             {nodes.length === 0 && uploadingFiles.length === 0 && (
@@ -865,13 +851,134 @@ export function FileManager({ onBack }: FileManagerProps) {
         </button>
       </div>
 
-      {/* Click outside to close context menu */}
+      {/* Click outside to close legacy context menu (if any still triggers) */}
       {selectedNode && (
         <div 
           className="absolute inset-0 z-10" 
           onClick={() => setSelectedNode(null)} 
         />
       )}
+
+      {/* Floating Context Menu */}
+      {contextMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-[100]" 
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}
+          />
+          <div 
+            style={{ 
+              top: Math.min(contextMenu.y, window.innerHeight - 155), 
+              left: Math.min(contextMenu.x, window.innerWidth - 185) 
+            }}
+            className="fixed bg-white/95 dark:bg-zinc-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-black/10 dark:border-white/10 z-[101] w-44 overflow-hidden py-1"
+          >
+            <div className="px-3.5 py-2 border-b border-black/5 dark:border-white/5 bg-gray-50/50 dark:bg-zinc-950/20">
+              <p className="text-[9px] font-extrabold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest truncate">
+                {contextMenu.node.type === 'folder' ? 'Folder Actions' : 'File Actions'}
+              </p>
+              <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate mt-0.5" title={contextMenu.node.name}>
+                {contextMenu.node.name}
+              </p>
+            </div>
+            
+            {contextMenu.node.type === 'file' && (
+              <button 
+                onClick={() => {
+                  handleShare(contextMenu.node);
+                  setContextMenu(null);
+                }}
+                className="w-full px-3.5 py-2.5 text-left text-xs font-bold flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/5 dark:border-white/5 text-zinc-700 dark:text-zinc-300"
+              >
+                <Share className="w-3.5 h-3.5 text-blue-500" /> Share File
+              </button>
+            )}
+            
+            <button 
+              onClick={() => {
+                setNewNameInput(contextMenu.node.name);
+                setRenamingNode(contextMenu.node);
+                setContextMenu(null);
+              }}
+              className="w-full px-3.5 py-2.5 text-left text-xs font-bold flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/5 dark:border-white/5 text-zinc-700 dark:text-zinc-300"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-amber-500" /> Rename Item
+            </button>
+            
+            <button 
+              onClick={() => {
+                handleDelete(contextMenu.node.id);
+                setContextMenu(null);
+              }}
+              className="w-full px-3.5 py-2.5 text-left text-xs font-bold flex items-center gap-2.5 hover:bg-black/5 dark:hover:bg-white/5 text-rose-500 font-extrabold"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete Locally
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Custom Rename Modal */}
+      <AnimatePresence>
+        {renamingNode && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 text-white"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-zinc-900 border border-white/10 w-full max-w-xs rounded-3xl p-5 shadow-2xl relative"
+            >
+              <h3 className="font-extrabold text-sm text-zinc-100 mb-1.5">Rename Item</h3>
+              <p className="text-[10px] text-zinc-400 mb-4 leading-normal">
+                Choose a custom name for your local file storage entry.
+              </p>
+              
+              <input
+                type="text"
+                value={newNameInput}
+                onChange={(e) => setNewNameInput(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newNameInput.trim()) {
+                    handleRename(renamingNode.id, newNameInput);
+                    setRenamingNode(null);
+                  } else if (e.key === 'Escape') {
+                    setRenamingNode(null);
+                  }
+                }}
+                className="w-full bg-zinc-800 border border-white/5 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 mb-4 font-bold shadow-inner"
+                placeholder="Filename"
+              />
+              
+              <div className="flex gap-2 text-xs">
+                <button
+                  onClick={() => setRenamingNode(null)}
+                  className="flex-1 bg-zinc-850 hover:bg-zinc-800 active:scale-95 text-zinc-300 font-bold py-2.5 rounded-xl transition-all border border-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (newNameInput.trim()) {
+                      handleRename(renamingNode.id, newNameInput);
+                      setRenamingNode(null);
+                    }
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-extrabold py-2.5 rounded-xl transition-all"
+                >
+                  Rename
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Media Preview Modal */}
       <AnimatePresence>

@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { useTheme } from '../ThemeContext';
-import { ArrowLeft, Check, Palette, Type, Square, Circle, Layout, Image as ImageIcon, Upload, Key } from 'lucide-react';
+import { ArrowLeft, Check, Palette, Type, Square, Circle, Layout, Image as ImageIcon, Upload, Key, Trash2, Database, AlertTriangle } from 'lucide-react';
 
 export function SettingsApp({ onBack }: { onBack: () => void }) {
   const { 
@@ -269,6 +269,117 @@ export function SettingsApp({ onBack }: { onBack: () => void }) {
           <p className="text-xs text-white/40 mt-3">
             Changes the padding and layout style of input fields across the OS.
           </p>
+        </div>
+
+        {/* Clear Local Data Settings Group */}
+        <div className="bg-[#2c2c2e] rounded-xl p-4 md:col-span-2 space-y-4">
+          <div className="flex items-center text-white/80 border-b border-white/5 pb-2">
+            <Trash2 className="w-5 h-5 mr-2 text-rose-500" />
+            <h2 className="font-semibold text-rose-500">Storage & Reset Controls</h2>
+          </div>
+          
+          <div className="flex flex-col gap-4">
+            <p className="text-xs text-white/60 leading-relaxed">
+              Wipe specific segments of local application storage to free up space. Deleted data is gone permanently and cannot be recovered.
+            </p>
+
+            <div className="space-y-3.5 pt-2">
+              {/* Category 1: Generated Images */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/5 pb-3.5 gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-white/95">Generated Creative Images</span>
+                  <span className="text-[11px] text-white/50">Wipes base64 streams of all generated artworks/photos</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    const confirmClear = window.confirm("Are you sure you want to clear all cached generated images? This action is irreversible.");
+                    if (confirmClear) {
+                      localStorage.removeItem('generatedImages');
+                      window.dispatchEvent(new Event('generatedImages-updated'));
+                      alert("Successfully cleared all generated image history!");
+                    }
+                  }}
+                  className="bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 border border-rose-500/20 text-rose-400 font-bold text-xs py-2 px-4 rounded-lg transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear Images
+                </button>
+              </div>
+
+              {/* Category 2: Cached Chat Sessions */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/5 pb-3.5 gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-white/95">Cached Chat Sessions</span>
+                  <span className="text-[11px] text-white/50">Resets the AI chatbot conversations and prompt metrics</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    const confirmClear = window.confirm("Are you sure you want to clear your local chat threads? This will reset your chatbot history.");
+                    if (confirmClear) {
+                      localStorage.removeItem('chatSessions');
+                      window.dispatchEvent(new Event('chatSessions-updated'));
+                      alert("Successfully cleared all local chatbot history!");
+                    }
+                  }}
+                  className="bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 border border-rose-500/20 text-rose-400 font-bold text-xs py-2 px-4 rounded-lg transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Clear Chat Logs
+                </button>
+              </div>
+
+              {/* Category 3: Downloaded VFS Media */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-white/5 pb-3.5 gap-3">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold text-white/95">Downloaded Media & Documents</span>
+                  <span className="text-[11px] text-white/50">Erases all downloaded files, mock media, and uploads in the Virtual File System</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    const confirmClear = window.confirm("Are you sure you want to delete all local folders, documents, and VFS files from IndexedDB?");
+                    if (confirmClear) {
+                      const { clearVFS } = await import('../lib/vfs');
+                      await clearVFS();
+                      alert("Successfully cleared all VFS folders, documents, and media!");
+                    }
+                  }}
+                  className="bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 border border-rose-500/20 text-rose-400 font-bold text-xs py-2 px-4 rounded-lg transition-all shadow-sm flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Wipe Media System
+                </button>
+              </div>
+
+              {/* Full Factory Reset Option */}
+              <div className="bg-rose-950/20 border border-rose-900/30 p-4 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                    Master All-Data Wipe
+                  </span>
+                  <p className="text-[11px] text-rose-300/80 leading-relaxed max-w-md">
+                    Instantly wipes ALL local storage, wallpaper IDs, personalization options, IndexedDB files, and authorization credentials, restoring the OS back to initial defaults.
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const confirmClear = window.confirm("CRITICAL RESET CONFIRMATION:\nAre you sure you want to perform a full system wipe and factory reset? This will reset ALL themes, wallpapers, chat histories, generated pictures, and offline file databases.");
+                    if (confirmClear) {
+                      const { clearVFS } = await import('../lib/vfs');
+                      await clearVFS();
+                      localStorage.clear();
+                      alert("All local databases and system variables have been fully wiped. The workspace will now reload.");
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full sm:w-auto bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-extrabold text-xs py-2.5 px-5 rounded-lg transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  Factory Reset App
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
