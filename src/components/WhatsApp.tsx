@@ -184,10 +184,28 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
 
   const handleGoogleSignIn = async () => {
     try {
+      setAuthError('');
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      setAuthError(error.message);
+      if (error?.code === 'auth/popup-closed-by-user' || error?.message?.includes('popup-closed-by-user')) {
+        setAuthError('Google Sign-In popup was closed or blocked. You can click "Continue as Guest" below to bypass sign-in instantly.');
+      } else {
+        setAuthError(error.message || 'Authentication failed. Please try again.');
+      }
+    }
+  };
+
+  const handleGuestSignIn = async () => {
+    setIsLoading(true);
+    setAuthError('');
+    try {
+      await signInWithPhoneMock('+15550199999');
+    } catch (error: any) {
+      console.error("Guest login failed:", error);
+      setAuthError('Guest Sign-In failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -829,6 +847,14 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
               </svg>
               Continue with Google
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGuestSignIn}
+              className="w-full bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 hover:border-green-500/35 font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
+            >
+              ⚡ Continue as Guest (Skip Sign-In)
             </button>
           </form>
         ) : (

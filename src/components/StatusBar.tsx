@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Signal, Wifi } from 'lucide-react';
+import { Signal, Wifi, WifiOff } from 'lucide-react';
 
 interface StatusBarProps {
   theme: 'light' | 'dark';
@@ -12,6 +12,18 @@ export function StatusBar({ theme, isVpnConnected }: StatusBarProps) {
   const [batteryLevel, setBatteryLevel] = useState(100);
   const [isCharging, setIsCharging] = useState(false);
   const [wifiSignal, setWifiSignal] = useState(3); // 0-3
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Real connection listening
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
 
   // Real-time Clock
   useEffect(() => {
@@ -67,8 +79,21 @@ export function StatusBar({ theme, isVpnConnected }: StatusBarProps) {
       </div>
       
       <div className={`flex items-center space-x-2 ${theme === 'light' ? 'text-zinc-900' : 'text-white'}`}>
-        <Signal className={`w-4 h-4 ${wifiSignal < 2 ? 'opacity-50' : 'opacity-100'}`} />
-        <Wifi className={`w-4 h-4 ${wifiSignal < 3 ? 'opacity-70' : 'opacity-100'}`} />
+        {!isOnline ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center space-x-1 text-rose-500 dark:text-rose-450 font-black text-[9px] uppercase tracking-wider animate-pulse bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20"
+          >
+            <WifiOff className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" />
+            <span>Offline</span>
+          </motion.div>
+        ) : (
+          <>
+            <Signal className={`w-4 h-4 ${wifiSignal < 2 ? 'opacity-50' : 'opacity-100'}`} />
+            <Wifi className={`w-4 h-4 ${wifiSignal < 3 ? 'opacity-70' : 'opacity-100'}`} />
+          </>
+        )}
         <div className={`flex items-center space-x-1 px-2 py-0.5 rounded-full border ${theme === 'light' ? 'bg-black/5 border-black/10' : 'bg-white/10 backdrop-blur-md border-white/10'}`}>
           <span className="text-[11px] font-bold">{batteryLevel}%</span>
           <div className={`w-6 h-3 border rounded-[4px] p-[1px] relative ${theme === 'light' ? 'border-zinc-400' : 'border-white/30'}`}>

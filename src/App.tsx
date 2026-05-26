@@ -45,12 +45,14 @@ const YouTubeApp = lazy(() => import('./components/YouTubeApp').then(m => ({ def
 const AiSearch = lazy(() => import('./components/AiSearch').then(m => ({ default: m.AiSearch })));
 const ImageGenerator = lazy(() => import('./components/ImageGenerator').then(m => ({ default: m.ImageGenerator })));
 const MediaPlayer = lazy(() => import('./components/MediaPlayer').then(m => ({ default: m.MediaPlayer })));
+const WorkspaceHub = lazy(() => import('./components/WorkspaceHub').then(m => ({ default: m.WorkspaceHub })));
 
 const TextGenerator = lazy(() => import('./components/TextGenerator').then(m => ({ default: m.TextGenerator })));
 
-type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search' | 'text-gen' | 'media-player';
+type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search' | 'text-gen' | 'media-player' | 'workspace';
 
 export const APPS = [
+  { id: 'workspace', name: 'Google Workspace', icon: LayoutGrid, color: 'text-indigo-400', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'ai-search', name: 'AI Search', icon: Search, color: 'text-orange-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'media-player', name: 'Media Player', icon: Play, color: 'text-indigo-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'image', name: 'AI Image', icon: Wand2, color: 'text-purple-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -93,6 +95,7 @@ function AppContent() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   
   const [chatSessions, setChatSessions] = useState<import('./types').ChatSession[]>(() => {
     const saved = localStorage.getItem('chatSessions');
@@ -242,6 +245,36 @@ function AppContent() {
     }
   }, [isDynamicIslandExpanded]);
 
+  // Integrated Online/Offline Dynamic Island Notification Hook
+  useEffect(() => {
+    const handleOnline = () => {
+      if ((window as any).showNotification) {
+        (window as any).showNotification(
+          'System Connected', 
+          'Rabby Efty Studio is back online.',
+          'https://api.dicebear.com/7.x/bottts/svg?seed=Efty'
+        );
+      }
+    };
+    const handleOffline = () => {
+      if ((window as any).showNotification) {
+        (window as any).showNotification(
+          'Offline Mode Active', 
+          'Core features and previously loaded content are fully cached and accessible offline.',
+          'https://api.dicebear.com/7.x/bottts/svg?seed=Offline'
+        );
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -259,12 +292,13 @@ function AppContent() {
   }, [chatSessions]);
 
   const handleSignIn = async () => {
+    setAuthError(null);
     try {
       await signInWithGoogle();
     } catch (error: any) {
       if (error?.code !== 'auth/popup-closed-by-user' && error?.message !== 'Firebase: Error (auth/popup-closed-by-user).') {
         console.error("Sign in failed:", error);
-        alert("Sign in failed. Please try again.");
+        setAuthError(error?.message || String(error));
       }
     }
   };
@@ -944,6 +978,7 @@ function AppContent() {
                   {activeTab === 'camera' && <CameraApp onClose={() => handleNavigate('home')} />}
                   {activeTab === 'contacts' && <ContactsApp onBack={handleBack} />}
                   {activeTab === 'media-player' && <MediaPlayer onBack={handleBack} />}
+                  {activeTab === 'workspace' && <WorkspaceHub onBack={handleBack} />}
                   {activeTab === 'status' && <SystemStatus 
                     isVpnConnected={isVpnConnected} 
                     theme={theme}
@@ -1062,6 +1097,62 @@ function AppContent() {
           className={`w-36 h-1.5 rounded-full pointer-events-auto cursor-pointer hover:scale-110 transition-transform ${theme === 'light' ? 'bg-zinc-800/30 hover:bg-zinc-800/50' : 'bg-white/40 hover:bg-white/60'}`} 
         />
       </div>
+
+      {/* Auth Help Dialog */}
+      <AnimatePresence>
+        {authError && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-950 border border-zinc-800 w-full max-w-sm rounded-[2rem] p-6 shadow-2xl flex flex-col gap-4 text-white text-xs text-left"
+            >
+              <div className="flex items-center gap-2 text-rose-400 font-bold border-b border-zinc-900 pb-3">
+                <Shield className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>Google Sign-In Error Solver</span>
+              </div>
+              
+              <div className="space-y-4 leading-relaxed text-[11px] text-zinc-300">
+                <p className="text-zinc-400 text-[10px] uppercase font-bold tracking-wider mb-2">
+                  Solution Guide (সমাধান নির্দেশিকা):
+                </p>
+
+                <div>
+                  <p className="font-bold text-amber-400 flex items-center gap-1.5 text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    Google hasn't verified this app Screen:
+                  </p>
+                  <p className="pl-3 text-zinc-300 mt-1">
+                    পপআপের নিচে বামে থাকা <strong className="text-white font-medium">"Advanced"</strong> লিংকে ক্লিক করে, তারপর নিচে <strong className="text-white font-bold underline">"Go to RabbyOS (unsafe)"</strong> লিংকে ক্লিক করে অনুমোদন দিন।
+                  </p>
+                </div>
+
+                <div>
+                  <p className="font-bold text-amber-400 flex items-center gap-1.5 text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    network-request-failed (পপআপ ব্লকড):
+                  </p>
+                  <p className="pl-3 text-zinc-300 mt-1">
+                    ব্রাউজার সিকিউরিটির কারণে আইফ্রেম প্রিভিউতে গুগল পপআপ ব্লক হচ্ছে। প্রিভিউ উইন্ডোর নিচে বা ডানে থাকা <strong className="text-white bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 font-mono">"Open App" (↗)</strong> এ ক্লিক করে আলাদা ট্যাবে অ্যাপটি ওপেন করে সাইন-ইন সম্পন্ন করুন।
+                  </p>
+                </div>
+
+                <div className="bg-rose-950/20 border border-rose-900/30 p-2.5 rounded-lg font-mono text-[10px] text-rose-400 break-all max-h-[80px] overflow-y-auto">
+                  {authError}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setAuthError(null)}
+                className="w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 py-3 rounded-xl text-center font-bold text-zinc-300 hover:text-white transition-all text-xs"
+              >
+                Close (বন্ধ করুন)
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

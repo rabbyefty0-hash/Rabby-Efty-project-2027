@@ -3,11 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Folder, File as FileIcon, Image as ImageIcon, Music, Video, 
   MoreHorizontal, Plus, Search, ChevronLeft, Trash2, Edit2, X, Download, Play, Pause,
-  LayoutGrid, List, HardDrive, Share, Upload
+  LayoutGrid, List, HardDrive, Share, Upload,
+  Cloud, CloudOff, RefreshCw, CheckCircle2, AlertTriangle, Settings2, Activity, LogOut, History
 } from 'lucide-react';
 import { VFSNode, getNodesByParent, addNode, deleteNode, renameNode, generateId, getNode, getAllFiles, verifyPermission } from '../lib/vfs';
 import { getMimeType } from '../lib/mime';
 import { VideoPlayer } from './VideoPlayer';
+import { CloudSyncDashboard } from './CloudSyncDashboard';
+import { 
+  getSyncStatus, subscribeToSync, performSimulatedSync, performGoogleDriveSync, 
+  resolveConflict, clearSyncHistory, getActiveConflicts, SyncStatus, SyncConflict 
+} from '../lib/vfsSync';
+import { getAccessToken, signInWithGoogle, logout, auth } from '../firebase';
 
 interface FileManagerProps {
   onBack?: () => void;
@@ -22,15 +29,62 @@ export function FileManager({ onBack }: FileManagerProps) {
   const [previewNode, setPreviewNode] = useState<VFSNode | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [activeTab, setActiveTab] = useState<'browse' | 'recents'>('browse');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    const saved = localStorage.getItem('fileManager_viewMode');
+    return (saved === 'grid' || saved === 'list') ? saved : 'list';
+  });
+  const [activeTab, setActiveTab] = useState<'browse' | 'recents' | 'sync'>('browse');
   const [uploadingFiles, setUploadingFiles] = useState<{id: string, name: string, progress: number, mimeType: string}[]>([]);
   const [needsPermission, setNeedsPermission] = useState(false);
   
+  // Cloud sync states
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
+  const [conflicts, setConflicts] = useState<SyncConflict[]>(getActiveConflicts());
+  const [autoSync, setAutoSync] = useState(() => localStorage.getItem('fileManager_autoSync') === 'true');
+  const [forceTriggerKey, setForceTriggerKey] = useState(0); // triggers connection state reload
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
+    localStorage.setItem('fileManager_viewMode', viewMode);
+  }, [viewMode]);
+
+  useEffect(() => {
+    localStorage.setItem('fileManager_autoSync', String(autoSync));
+  }, [autoSync]);
+
+  // Subscribe to sync state updates
+  useEffect(() => {
+    const unsubscribe = subscribeToSync((status, activeConflicts) => {
+      setSyncStatus(status);
+      setConflicts(activeConflicts);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Listen to local node modifications and trigger auto-sync if enabled
+  useEffect(() => {
+    if (!autoSync || syncStatus.isSyncing) return;
+
+    const handleVfsUpdateForSync = () => {
+      const dbgToken = getAccessToken();
+      const delayTimer = setTimeout(() => {
+        if (dbgToken) {
+          performGoogleDriveSync(dbgToken);
+        } else {
+          performSimulatedSync();
+        }
+      }, 3000); // 3-second debounce to batch files
+      return () => clearTimeout(delayTimer);
+    };
+
+    window.addEventListener('vfs-updated', handleVfsUpdateForSync);
+    return () => window.removeEventListener('vfs-updated', handleVfsUpdateForSync);
+  }, [autoSync, syncStatus.isSyncing]);
+
+  useEffect(() => {
+    if (activeTab === 'sync') return; // Don't run node load if sync tab is active
     loadNodes();
     
     const handleVfsUpdate = () => loadNodes();
@@ -456,7 +510,7 @@ export function FileManager({ onBack }: FileManagerProps) {
         }}
       />
       {/* Header */}
-      <div className="pt-12 pb-4 px-4 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-black/5 dark:border-white/10 z-10 flex-shrink-0">
+      <div key={`header-${forceTriggerKey}`} className="pt-12 pb-4 px-4 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-black/5 dark:border-white/10 z-10 flex-shrink-0">
         <div className="flex justify-between items-center mb-2">
           {activeTab === 'browse' && folderHistory.length > 1 ? (
             <button onClick={navigateBack} className="flex items-center text-blue-500 font-medium">
@@ -467,12 +521,14 @@ export function FileManager({ onBack }: FileManagerProps) {
             <div className="w-16" /> // Spacer
           )}
           <div className="flex gap-3 items-center">
-            <button 
-              onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')} 
-              className="p-2 text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 rounded-full transition-colors active:scale-95"
-            >
-              {viewMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
-            </button>
+            {activeTab !== 'sync' && (
+              <button 
+                onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')} 
+                className="p-2 text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 rounded-full transition-colors active:scale-95"
+              >
+                {viewMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
+              </button>
+            )}
             {activeTab === 'browse' && (
               <>
                 <button 
@@ -493,22 +549,28 @@ export function FileManager({ onBack }: FileManagerProps) {
                 </button>
               </>
             )}
-            <button onClick={() => fileInputRef.current?.click()} className="p-2 text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 rounded-full transition-colors active:scale-95" title="Upload File">
-              <Upload className="w-5 h-5" />
-            </button>
+            {activeTab !== 'sync' && (
+              <button onClick={() => fileInputRef.current?.click()} className="p-2 text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 rounded-full transition-colors active:scale-95" title="Upload File">
+                <Upload className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">{activeTab === 'recents' ? 'Recents' : currentFolderName}</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {activeTab === 'recents' ? 'Recents' : activeTab === 'sync' ? 'Cloud Sync' : currentFolderName}
+        </h1>
         
         {/* Search Bar */}
-        <div className="mt-4 relative">
-          <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="Search" 
-            className="w-full bg-black/5 dark:bg-white/10 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        {activeTab !== 'sync' && (
+          <div className="mt-4 relative">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text" 
+              placeholder="Search" 
+              className="w-full bg-black/5 dark:bg-white/10 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        )}
       </div>
 
       <input 
@@ -521,7 +583,29 @@ export function FileManager({ onBack }: FileManagerProps) {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {needsPermission ? (
+        {activeTab === 'sync' ? (
+          <CloudSyncDashboard 
+            syncStatus={syncStatus}
+            conflicts={conflicts}
+            autoSync={autoSync}
+            setAutoSync={setAutoSync}
+            onTriggerSync={async () => {
+              const driveToken = getAccessToken();
+              if (driveToken && driveToken !== 'mock_workspace_token') {
+                await performGoogleDriveSync(driveToken);
+              } else {
+                await performSimulatedSync();
+              }
+            }}
+            onClearHistory={clearSyncHistory}
+            onResolveConflict={async (conflict, decision) => {
+              const driveToken = getAccessToken();
+              await resolveConflict(conflict, decision, (driveToken && driveToken !== 'mock_workspace_token') ? driveToken : undefined);
+            }}
+            forceTriggerKey={forceTriggerKey}
+            setForceTriggerKey={setForceTriggerKey}
+          />
+        ) : needsPermission ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400 h-full">
             <HardDrive className="w-16 h-16 mb-4 opacity-20" />
             <p className="mb-6">Permission required to access this folder</p>
@@ -771,6 +855,13 @@ export function FileManager({ onBack }: FileManagerProps) {
         >
           <Folder className="w-6 h-6" />
           <span className="text-[10px] font-medium">Browse</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('sync')}
+          className={`flex flex-col items-center gap-1 p-2 w-20 ${activeTab === 'sync' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}
+        >
+          <Cloud className="w-6 h-6" />
+          <span className="text-[10px] font-medium">Cloud Sync</span>
         </button>
       </div>
 

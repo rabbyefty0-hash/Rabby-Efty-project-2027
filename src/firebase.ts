@@ -6,12 +6,29 @@ import firebaseConfig from '../firebase-applet-config.json';
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope('https://www.googleapis.com/auth/calendar');
+googleProvider.addScope('https://www.googleapis.com/auth/drive');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.spaces');
+googleProvider.addScope('https://www.googleapis.com/auth/chat.messages');
+googleProvider.addScope('https://www.googleapis.com/auth/meetings.space.created');
+googleProvider.addScope('https://www.googleapis.com/auth/meetings.space.readonly');
+
+let cachedAccessToken: string | null = null;
+
+export const getAccessToken = () => cachedAccessToken;
+export const setAccessToken = (token: string | null) => {
+  cachedAccessToken = token;
+};
 
 export const signInWithGoogle = async () => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      cachedAccessToken = credential.accessToken;
+    }
     const user = result.user;
     
     // Create/update user profile in Firestore
@@ -52,12 +69,32 @@ export const signInWithPhoneMock = async (phoneNumber: string) => {
     
     return user;
   } catch (error: any) {
-    console.error("Error signing in anonymously:", error);
-    throw error;
+    console.warn("Firebase signInAnonymously failed (likely disabled in console). Falling back to client-side offline simulated session:", error);
+    // Return a mocked user object conforming to the User type
+    const simulatedUser: any = {
+      uid: 'guest_whatsapp_sim_' + Date.now(),
+      displayName: phoneNumber,
+      phoneNumber: phoneNumber,
+      email: '',
+      photoURL: '',
+      emailVerified: false,
+      isAnonymous: true,
+      metadata: {},
+      providerData: [],
+      delete: async () => {},
+      getIdToken: async () => 'mock_id_token',
+      getIdTokenResult: async () => ({} as any),
+      reload: async () => {},
+      toJSON: () => ({})
+    };
+    return simulatedUser;
   }
 };
 
-export const logout = () => signOut(auth);
+export const logout = () => {
+  cachedAccessToken = null;
+  return signOut(auth);
+};
 
 export { onAuthStateChanged };
 export type { User };
