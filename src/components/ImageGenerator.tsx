@@ -167,6 +167,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
           });
 
           let found = false;
+          let responseText = '';
           if (response.candidates?.[0]?.content?.parts) {
             for (const part of response.candidates[0].content.parts) {
               if (part.inlineData) {
@@ -176,10 +177,18 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
                  found = true;
                  console.log(`Generated and saved image.`);
                  break;
+              } else if (part.text) {
+                 responseText += part.text + ' ';
               }
             }
           }
-          if (!found) throw new Error("The AI failed to render your vision. Try refinement.");
+          if (!found) {
+            if (responseText.trim()) {
+              throw new Error(responseText.trim());
+            } else {
+              throw new Error("The AI failed to render your vision. Try refinement.");
+            }
+          }
         } catch (imgError: any) {
            const errMsg = imgError.message || String(imgError);
            if (
@@ -211,6 +220,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
         });
         
         let found = false;
+        let responseText = '';
         if (response.candidates?.[0]?.content?.parts) {
           for (const part of response.candidates[0].content.parts) {
             // Find the image part, do not assume it is the first part.
@@ -221,12 +231,18 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
               console.log(`Generated and saved image.`);
               found = true;
               break;
+            } else if (part.text) {
+              responseText += part.text + ' ';
             }
           }
         }
         
         if (!found) {
-          throw new Error("The AI failed to render your vision. Try refinement.");
+          if (responseText.trim()) {
+            throw new Error(responseText.trim());
+          } else {
+            throw new Error("The AI failed to render your vision. Try refinement.");
+          }
         }
       }
 

@@ -475,12 +475,15 @@ export const performGoogleDriveSync = async (googleToken: string) => {
       // Check if there is an existing GDrive file mapping under RabbyOS_VFS_Sync
       const remoteFileId = await findDriveFileInFolder(syncFolderId, `VFS_node_${node.id}`, googleToken);
       
-      const metadata = {
+      const metadata: any = {
         name: `VFS_node_${node.id}`,
-        parents: [syncFolderId],
         description: `RabbyOS VFS Sync File: ${node.name}`,
         mimeType: node.mimeType || 'application/octet-stream'
       };
+
+      if (!remoteFileId) {
+        metadata.parents = [syncFolderId];
+      }
 
       const formData = new FormData();
       formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
@@ -501,7 +504,8 @@ export const performGoogleDriveSync = async (googleToken: string) => {
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to upload ${node.name}: ${res.statusText}`);
+        const errText = await res.text();
+        throw new Error(`Failed to upload ${node.name}: ${res.status} ${res.statusText} - ${errText}`);
       }
       
       processed++;
@@ -783,11 +787,14 @@ const getDriveManifest = async (folderId: string, token: string): Promise<any | 
 const uploadDriveManifest = async (folderId: string, manifest: any, token: string) => {
   const fileId = await findDriveFileInFolder(folderId, 'manifest.json', token);
   
-  const metadata = {
+  const metadata: any = {
     name: 'manifest.json',
-    parents: [folderId],
     mimeType: 'application/json'
   };
+
+  if (!fileId) {
+    metadata.parents = [folderId];
+  }
 
   const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' });
   const formData = new FormData();
@@ -808,7 +815,11 @@ const uploadDriveManifest = async (folderId: string, manifest: any, token: strin
     body: formData
   });
 
-  if (!res.ok) throw new Error('Failed uploading synchronous master index file.');
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error(`Upload drive manifest failed (${res.status}):`, errText);
+    throw new Error(`Failed uploading synchronous master index file: ${res.status} ${res.statusText} - ${errText}`);
+  }
 };
 
 // ==========================================

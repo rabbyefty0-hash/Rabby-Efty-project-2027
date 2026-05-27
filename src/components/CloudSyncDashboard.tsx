@@ -338,6 +338,24 @@ export function CloudSyncDashboard({
             <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-250 ${autoSync ? 'translate-x-5' : 'translate-x-0'}`} />
           </button>
         </div>
+
+        <div className="border-t border-black/5 dark:border-white/5 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3" id="manual-sync-row">
+          <div className="flex-1 text-left">
+            <span className="text-xs font-bold block">Manual File Sync</span>
+            <span className="text-[10px] text-gray-500 dark:text-zinc-400 leading-relaxed block">
+              Force an immediate manual reconciliation of file differences.
+            </span>
+          </div>
+          <button
+            onClick={onTriggerSync}
+            disabled={syncStatus.isSyncing}
+            id="btn-manual-sync-now"
+            className="w-full sm:w-auto px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 active:scale-95 text-center shrink-0"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncStatus.isSyncing ? 'animate-spin' : ''}`} />
+            <span>{syncStatus.isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+          </button>
+        </div>
       </div>
 
       {/* 5. Terminal Logs */}
