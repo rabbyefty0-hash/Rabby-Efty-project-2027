@@ -29,6 +29,7 @@ export function FileManager({ onBack }: FileManagerProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, node: VFSNode } | null>(null);
   const [renamingNode, setRenamingNode] = useState<VFSNode | null>(null);
   const [newNameInput, setNewNameInput] = useState('');
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [previewNode, setPreviewNode] = useState<VFSNode | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -93,6 +94,10 @@ export function FileManager({ onBack }: FileManagerProps) {
     const handleVfsUpdate = () => loadNodes();
     window.addEventListener('vfs-updated', handleVfsUpdate);
     return () => window.removeEventListener('vfs-updated', handleVfsUpdate);
+  }, [currentFolderId, activeTab]);
+
+  useEffect(() => {
+    setSelectedNodeIds([]);
   }, [currentFolderId, activeTab]);
 
   const loadNodes = async () => {
@@ -425,6 +430,88 @@ export function FileManager({ onBack }: FileManagerProps) {
     }
   };
 
+  const handleBulkDelete = async (nodeIds: string[]) => {
+    if (nodeIds.length === 0) return;
+    const confirmDelete = window.confirm(`Are you sure you want to delete ${nodeIds.length} selected items locally?`);
+    if (!confirmDelete) return;
+
+    for (const id of nodeIds) {
+      const node = nodes.find(n => n.id === id);
+      if (!node) continue;
+      if (node.handle) {
+        try {
+          const parentNode = node.parentId ? await getNode(node.parentId) : null;
+          if (parentNode?.handle) {
+            await parentNode.handle.removeEntry(node.name, { recursive: true });
+          }
+        } catch (e) {
+          console.error(`Failed to delete "${node.name}" from device`, e);
+        }
+      }
+      await deleteNode(id);
+    }
+    
+    setSelectedNodeIds([]);
+    loadNodes();
+  };
+
+  const handleBulkShare = async (nodeIds: string[]) => {
+    try {
+      const filesToShare: File[] = [];
+      for (const id of nodeIds) {
+        const node = nodes.find(n => n.id === id);
+        if (!node || node.type !== 'file') continue;
+        
+        let file: File | undefined;
+        if (node.data instanceof File) {
+          file = node.data;
+        } else if (node.data instanceof Blob) {
+          file = new File([node.data], node.name, { type: node.mimeType || 'application/octet-stream' });
+        }
+        
+        if (!file && node.handle && node.handle.kind === 'file') {
+          const hasPermission = await verifyPermission(node.handle, false);
+          if (hasPermission) {
+            file = await node.handle.getFile();
+          }
+        }
+
+        if (!file) {
+          const fullNode = await getNode(node.id);
+          if (fullNode?.data instanceof File) {
+            file = fullNode.data;
+          } else if (fullNode?.data instanceof Blob) {
+            file = new File([fullNode.data], fullNode.name, { type: fullNode.mimeType || 'application/octet-stream' });
+          }
+        }
+        
+        if (file) {
+          filesToShare.push(file);
+        }
+      }
+
+      if (filesToShare.length === 0) {
+        alert("No shareable files were selected.");
+        return;
+      }
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: filesToShare })) {
+        await navigator.share({
+          files: filesToShare,
+          title: "Shared Workspace Files",
+          text: `Sharing ${filesToShare.length} files`
+        });
+      } else {
+        alert("Sharing multiple files is not supported on this browser context. You can share nodes individually.");
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error("Error bulk sharing files:", error);
+        alert("Failed to share files.");
+      }
+    }
+  };
+
   const openPreview = async (node: VFSNode) => {
     if (node.type === 'folder') {
       if (node.handle) {
@@ -740,19 +827,85 @@ export function FileManager({ onBack }: FileManagerProps) {
                 <span className="text-xs text-blue-500 font-medium w-10 text-right">{Math.round(file.progress)}%</span>
               </div>
             ))}
-            {nodes.map(node => (
-              <div 
-                key={node.id} 
-                className="flex items-center gap-4 p-3 bg-white dark:bg-zinc-900 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors relative group cursor-pointer"
-                onClick={() => openPreview(node)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setContextMenu({ x: e.clientX, y: e.clientY, node });
-                }}
-              >
-                <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
-                  {getIcon(node)}
+            {/* Bulk Selection Header Bar */}
+            {nodes.length > 0 && (
+              <div className="flex items-center justify-between p-3 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-black/5 dark:border-white/5 mb-1">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={nodes.length > 0 && selectedNodeIds.length === nodes.length}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = selectedNodeIds.length > 0 && selectedNodeIds.length < nodes.length;
+                      }
+                    }}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedNodeIds(nodes.map(n => n.id));
+                      } else {
+                        setSelectedNodeIds([]);
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-500"
+                  />
+                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                    {selectedNodeIds.length > 0 
+                      ? `${selectedNodeIds.length} of ${nodes.length} Selected` 
+                      : 'Select All Items'}
+                  </span>
                 </div>
+                
+                {selectedNodeIds.length > 0 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleBulkShare(selectedNodeIds)}
+                      className="px-2.5 py-1.5 text-[11px] font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-950/80 text-blue-600 dark:text-blue-400 rounded-lg flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      title="Bulk Share Selected"
+                    >
+                      <Share className="w-3.5 h-3.5" /> Share
+                    </button>
+                    <button
+                      onClick={() => handleBulkDelete(selectedNodeIds)}
+                      className="px-2.5 py-1.5 text-[11px] font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/80 text-rose-600 dark:text-rose-450 rounded-lg flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                      title="Bulk Delete Selected"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {nodes.map(node => {
+              const isSelected = selectedNodeIds.includes(node.id);
+              return (
+                <div 
+                  key={node.id} 
+                  className={`flex items-center gap-4 p-3 bg-white dark:bg-zinc-900 rounded-xl shadow-sm hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors relative group cursor-pointer ${isSelected ? 'ring-2 ring-blue-500/50' : ''}`}
+                  onClick={() => openPreview(node)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setContextMenu({ x: e.clientX, y: e.clientY, node });
+                  }}
+                >
+                  <div onClick={(e) => e.stopPropagation()} className="flex items-center pl-1">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedNodeIds(prev => [...prev, node.id]);
+                        } else {
+                          setSelectedNodeIds(prev => prev.filter(id => id !== node.id));
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-500"
+                    />
+                  </div>
+
+                  <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
+                    {getIcon(node)}
+                  </div>
                 <div className="flex-1 min-w-0 pr-24">
                   <p className="text-sm font-medium truncate">{node.name}</p>
                   <p className="text-xs text-gray-500">
@@ -795,7 +948,8 @@ export function FileManager({ onBack }: FileManagerProps) {
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
               </div>
-            ))}
+              );
+            })}
             {nodes.length === 0 && uploadingFiles.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                 <Folder className="w-16 h-16 mb-4 opacity-20" />

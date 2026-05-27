@@ -181,8 +181,17 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
           }
           if (!found) throw new Error("The AI failed to render your vision. Try refinement.");
         } catch (imgError: any) {
-           if (imgError.message?.includes('permission denied') || imgError.message?.includes('403') || imgError.status === 403 || String(imgError).includes('403')) {
-              throw new Error('Image editing requires a paid Gemini key. Please remove the reference image to use the free generation, or add a paid API Key.');
+           const errMsg = imgError.message || String(imgError);
+           if (
+              errMsg.includes('permission denied') ||
+              errMsg.includes('403') ||
+              errMsg.includes('500') ||
+              errMsg.includes('Rpc failed') ||
+              errMsg.includes('ProxyUnaryCall') ||
+              errMsg.includes('xhr error') ||
+              imgError.status === 403
+           ) {
+              throw new Error('Image generation/editing requires a paid Gemini key. Please click "Settings > Secrets" and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
            }
            throw imgError;
         }
@@ -223,7 +232,19 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
 
     } catch (err: any) {
       console.error("AI Generation Error:", err);
-      setError(err.message || "Something interrupted the creative spark.");
+      const errMsg = err.message || String(err);
+      if (
+        errMsg.includes('permission denied') ||
+        errMsg.includes('403') ||
+        errMsg.includes('500') ||
+        errMsg.includes('Rpc failed') ||
+        errMsg.includes('ProxyUnaryCall') ||
+        errMsg.includes('xhr error')
+      ) {
+        setError('Image generation/editing requires a paid Gemini key. Please click Settings > Secrets and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
+      } else {
+        setError(errMsg || "Something interrupted the creative spark.");
+      }
     } finally {
       setIsGenerating(false);
       setStatus('');
@@ -285,7 +306,19 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
       if (!found) throw new Error("The AI failed to edit your image. Try refinement.");
     } catch (imgError: any) {
        console.error("Image editing error", imgError);
-       setError(imgError.message || "Failed to edit image.");
+       const errMsg = imgError.message || String(imgError);
+       if (
+         errMsg.includes('permission denied') ||
+         errMsg.includes('403') ||
+         errMsg.includes('500') ||
+         errMsg.includes('Rpc failed') ||
+         errMsg.includes('ProxyUnaryCall') ||
+         errMsg.includes('xhr error')
+       ) {
+         setError('Image generation/editing requires a paid Gemini key. Please click Settings > Secrets and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
+       } else {
+         setError(errMsg || "Failed to edit image.");
+       }
     } finally {
        setIsGenerating(false);
        setStatus('');
