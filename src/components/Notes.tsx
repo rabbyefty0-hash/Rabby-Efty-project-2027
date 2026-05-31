@@ -33,10 +33,18 @@ export function Notes({ onBack }: NotesProps) {
       content: '',
       date: new Date().toLocaleDateString(),
     };
-    setNotes([newNote, ...notes]);
+    setNotes(prev => [newNote, ...prev]);
     setActiveNote(newNote);
     setIsEditing(true);
   };
+
+  useEffect(() => {
+    const action = sessionStorage.getItem('notes_action');
+    if (action === 'new_note') {
+      sessionStorage.removeItem('notes_action');
+      createNote();
+    }
+  }, []);
 
   const saveNote = () => {
     if (activeNote) {

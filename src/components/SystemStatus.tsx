@@ -3,6 +3,8 @@ import { motion } from 'motion/react';
 import { Shield, Battery, Wifi, Signal, Cpu, HardDrive, Activity, Zap, Globe, Clock, Server, Smartphone, CheckCircle2, AlertCircle, Sun, Moon, LogOut, User as UserIcon, ChevronRight, Info, Download, Settings, Languages, X, Check, Share2 } from 'lucide-react';
 import { Card } from './ui/card';
 import { User } from '../firebase';
+import { useBattery } from '../BatteryContext';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 interface StatusItemProps {
   icon: React.ReactNode;
@@ -73,12 +75,12 @@ export const SystemStatus = ({
   handleLogout: () => void;
   onBack?: () => void;
 }) => {
+  // BatteryContext values
+  const { batteryLevel, isCharging, batteryHistory } = useBattery();
   const [uptime, setUptime] = useState('00:00:00');
   const [startTime] = useState(Date.now() - performance.now());
   
   // Real device states
-  const [realBatteryLevel, setRealBatteryLevel] = useState<number | null>(null);
-  const [realIsCharging, setRealIsCharging] = useState<boolean | null>(null);
   const [networkType, setNetworkType] = useState<string>('Unknown');
   const [downlink, setDownlink] = useState<number | null>(null);
   const [rtt, setRtt] = useState<number | null>(null);
@@ -134,17 +136,6 @@ export const SystemStatus = ({
 
     setDeviceInfo({ os, model, cores, memory, browser });
 
-    // 2. Get Battery Info
-    if ('getBattery' in navigator) {
-      (navigator as any).getBattery().then((battery: any) => {
-        setRealBatteryLevel(Math.round(battery.level * 100));
-        setRealIsCharging(battery.charging);
-
-        battery.addEventListener('levelchange', () => setRealBatteryLevel(Math.round(battery.level * 100)));
-        battery.addEventListener('chargingchange', () => setRealIsCharging(battery.charging));
-      }).catch(() => console.log('Battery API not supported'));
-    }
-
     // 3. Get Network Info
     const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
     if (connection) {
@@ -185,8 +176,8 @@ export const SystemStatus = ({
     return () => clearInterval(timer);
   }, [startTime]);
 
-  const displayBattery = realBatteryLevel !== null ? realBatteryLevel : 100;
-  const displayCharging = realIsCharging !== null ? realIsCharging : false;
+  const displayBattery = batteryLevel;
+  const displayCharging = isCharging;
   const displayWifiSignal = 3;
   
   const formatBytes = (bytes: number) => {
@@ -440,6 +431,65 @@ export const SystemStatus = ({
           />
         </div>
 
+        {/* Battery Level History Line Chart */}
+        <Card className={`p-6 glass-card border-white/10 mt-8 ${theme === 'light' ? 'bg-white/60 text-zinc-900 border-zinc-250 shadow-md' : 'bg-white/5 text-white'}`}>
+          <div className="flex justify-between items-center mb-6">
+            <h3 className={`text-xs font-black uppercase tracking-[0.2em] flex items-center ${theme === 'light' ? 'text-zinc-500' : 'text-white/40'}`}>
+              <Activity className="w-4 h-4 mr-2 text-indigo-400" />
+              Battery Level History
+            </h3>
+            <span className="text-[10px] font-mono text-zinc-500 bg-white/5 dark:bg-black/30 px-2.5 py-1 rounded-full border border-white/10">
+              {batteryHistory.length} Point Timeline
+            </span>
+          </div>
+
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={batteryHistory} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="batteryGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={isCharging ? '#10b981' : '#6366f1'} stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor={isCharging ? '#10b981' : '#6366f1'} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={theme === 'light' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'} vertical={false} />
+                <XAxis 
+                  dataKey="time" 
+                  tick={{ fill: theme === 'light' ? '#71717a' : '#a1a1aa', fontSize: 10, fontWeight: 500 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  domain={[0, 100]} 
+                  tick={{ fill: theme === 'light' ? '#71717a' : '#a1a1aa', fontSize: 10, fontWeight: 500 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(18, 18, 18, 0.95)', 
+                    borderColor: theme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    color: theme === 'light' ? '#18181b' : '#ffffff',
+                    fontSize: '11px',
+                    fontWeight: 'bold'
+                  }} 
+                  labelStyle={{ color: '#8b5cf6' }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="level" 
+                  stroke={isCharging ? '#10b981' : '#6366f1'} 
+                  strokeWidth={2.5}
+                  fillOpacity={1} 
+                  fill="url(#batteryGrad)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
         <Card className="p-6 glass-card border-white/10 mt-8">
           <h3 className={`text-xs font-black uppercase tracking-[0.2em] mb-6 flex items-center ${theme === 'light' ? 'text-zinc-400' : 'text-white/30'}`}>
             <Zap className="w-3 h-3 mr-2 text-amber-400" />
@@ -450,7 +500,7 @@ export const SystemStatus = ({
               { name: 'Hardware Concurrency', status: 'Active', load: `${deviceInfo.cores} Logical Cores` },
               { name: 'Device Memory API', status: 'Active', load: `~${deviceInfo.memory} GB Class` },
               { name: 'Network Information API', status: networkType !== 'Unknown' ? 'Active' : 'Unsupported', load: networkType },
-              { name: 'Battery Status API', status: realBatteryLevel !== null ? 'Active' : 'Unsupported', load: realBatteryLevel !== null ? `${realBatteryLevel}%` : 'N/A' },
+              { name: 'Battery Status API', status: 'Active', load: `${batteryLevel}%` },
             ].map((service, i) => (
               <div key={i} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
                 <div className="flex flex-col">

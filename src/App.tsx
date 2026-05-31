@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { auth, signInWithGoogle, logout, onAuthStateChanged, User } from './firebase';
 import { populateDummyData } from './lib/populate';
 import { ThemeProvider, useTheme } from './ThemeContext';
+import { BatteryProvider } from './BatteryContext';
 
 import { Calculator as CalculatorApp } from './components/Calculator';
 import { Notes as NotesApp } from './components/Notes';
@@ -1190,12 +1191,14 @@ import { CustomCursor } from './components/CustomCursor';
 export default function App() {
   return (
     <ThemeProvider>
-      <CustomCursor />
-      <div className="w-full h-[100dvh] bg-black sm:py-4 flex items-center justify-center overflow-hidden">
-        <div className="w-full h-full sm:max-w-[440px] sm:max-h-[956px] sm:rounded-[3rem] sm:border-[8px] sm:border-zinc-900 overflow-hidden relative shadow-2xl bg-[#000]">
-          <AppContent />
+      <BatteryProvider>
+        <CustomCursor />
+        <div className="w-full h-[100dvh] bg-black sm:py-4 flex items-center justify-center overflow-hidden">
+          <div className="w-full h-full sm:max-w-[440px] sm:max-h-[956px] sm:rounded-[3rem] sm:border-[8px] sm:border-zinc-900 overflow-hidden relative shadow-2xl bg-[#000]">
+            <AppContent />
+          </div>
         </div>
-      </div>
+      </BatteryProvider>
     </ThemeProvider>
   );
 }

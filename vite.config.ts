@@ -38,6 +38,7 @@ export default defineConfig(({mode}) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,json,woff,woff2}'],
           cleanupOutdatedCaches: true,
           navigateFallback: 'index.html',
+          maximumFileSizeToCacheInBytes: 6000000,
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,

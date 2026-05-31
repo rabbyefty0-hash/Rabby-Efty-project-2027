@@ -29,6 +29,15 @@ export function Calendar({ onBack }: CalendarProps) {
     localStorage.setItem('app_calendar_events', JSON.stringify(events));
   }, [events]);
 
+  useEffect(() => {
+    const action = sessionStorage.getItem('calendar_action');
+    if (action === 'new_event') {
+      sessionStorage.removeItem('calendar_action');
+      setSelectedDate(new Date());
+      setShowAddEvent(true);
+    }
+  }, []);
+
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
 

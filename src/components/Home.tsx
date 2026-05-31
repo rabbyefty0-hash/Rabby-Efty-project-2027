@@ -1,5 +1,5 @@
 import React, { useState, useEffect, memo, useMemo } from 'react';
-import { Sparkles, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock, Images, X, Wind, Music, Map, Camera, LayoutGrid, Heart, Flame, Settings, Lock, CheckCircle, MessageSquare, ChevronRight } from 'lucide-react';
+import { Sparkles, Video, Mic, Shield, Globe, DownloadCloud, ThumbsUp, Smartphone, Swords, Activity, CreditCard, Mail, MessageCircle, Phone, Folder, Cloud, Battery, Calendar, Search, Clock, Images, X, Wind, Music, Map, Camera, LayoutGrid, Heart, Flame, Settings, Lock, CheckCircle, MessageSquare, ChevronRight, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTheme } from '../ThemeContext';
 import { APPS } from '../App';
@@ -922,6 +922,75 @@ const ArenaAiWidget = memo(({ onNavigate }: { onNavigate: (tab: any) => void }) 
 });
 
 // -------------------------------------------------------------
+// QuickAddWidget - Instant navigation to notes, events & camera
+// -------------------------------------------------------------
+const QuickAddWidget = memo(({ onNavigate }: { onNavigate: (tab: any) => void }) => {
+  const handleQuickAddAction = (target: string, actionName?: string) => {
+    if (actionName) {
+      sessionStorage.setItem(`${target}_action`, actionName);
+    }
+    onNavigate(target);
+  };
+
+  return (
+    <div className="w-full min-h-[9rem] bg-white/45 dark:bg-black/35 rounded-[2.2rem] backdrop-blur-[45px] border border-white/20 dark:border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.1),inset_0_1px_2px_rgba(255,255,255,0.4)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.1)] overflow-hidden p-5 flex flex-col justify-between relative group transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
+      {/* Background radial highlight */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 dark:bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-rose-500/5 dark:bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="flex items-center justify-between mb-2 pb-1 relative z-10">
+        <div className="flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-rose-450 animate-pulse" />
+          <h3 className="text-slate-500 dark:text-neutral-450 font-black tracking-widest uppercase text-[9px]">Quick Add</h3>
+        </div>
+        <span className="text-[8px] font-mono bg-indigo-500/10 dark:bg-indigo-500/20 px-2.5 py-0.5 rounded-full text-indigo-600 dark:text-indigo-300 font-bold uppercase tracking-wider">Instant Action</span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 relative z-10 h-full py-1">
+        {/* New Note */}
+        <motion.button
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => handleQuickAddAction('notes', 'new_note')}
+          className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 dark:border-amber-500/10 cursor-pointer transition-colors group flex-1"
+        >
+          <div className="w-8 h-8 rounded-xl bg-amber-500/25 flex items-center justify-center text-amber-600 dark:text-amber-400 mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+            <Plus className="w-4 h-4" />
+          </div>
+          <span className="text-[10px] font-black tracking-wide text-slate-700 dark:text-zinc-200 uppercase leading-tight text-center">New Note</span>
+        </motion.button>
+
+        {/* New Calendar Event */}
+        <motion.button
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => handleQuickAddAction('calendar', 'new_event')}
+          className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 dark:border-red-500/10 cursor-pointer transition-colors group flex-1"
+        >
+          <div className="w-8 h-8 rounded-xl bg-red-500/25 flex items-center justify-center text-red-500 dark:text-rose-400 mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+            <Calendar className="w-4 h-4" />
+          </div>
+          <span className="text-[10px] font-black tracking-wide text-slate-700 dark:text-zinc-200 uppercase leading-tight text-center flex-1 self-center text-center">New Event</span>
+        </motion.button>
+
+        {/* Camera */}
+        <motion.button
+          whileHover={{ scale: 1.05, y: -2 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => handleQuickAddAction('camera')}
+          className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-zinc-500/10 hover:bg-zinc-500/15 border border-zinc-500/20 dark:border-zinc-500/10 cursor-pointer transition-colors group flex-1"
+        >
+          <div className="w-8 h-8 rounded-xl bg-zinc-500/25 flex items-center justify-center text-zinc-700 dark:text-zinc-300 mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+            <Camera className="w-4 h-4" />
+          </div>
+          <span className="text-[10px] font-black tracking-wide text-slate-700 dark:text-zinc-200 uppercase leading-tight text-center">Camera</span>
+        </motion.button>
+      </div>
+    </div>
+  );
+});
+
+// -------------------------------------------------------------
 // Main Home Screen Grid
 // -------------------------------------------------------------
 export function Home({ onNavigate, recentApps }: HomeProps) {
@@ -990,6 +1059,7 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
               <ClockWidget />
               <WorkspaceOverviewWidget onNavigate={onNavigate} />
               <div className="flex flex-col gap-4 sm:gap-6 md:col-span-2 lg:col-span-1">
+                <QuickAddWidget onNavigate={onNavigate} />
                 <SmartStackWidget onNavigate={onNavigate} />
                 <ArenaAiWidget onNavigate={onNavigate} />
               </div>
