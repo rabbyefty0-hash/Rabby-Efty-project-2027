@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ChevronLeft, Play, Youtube, AlertCircle, Loader2, X, ThumbsUp, ThumbsDown, Share2, Download, Bookmark, MessageSquare, MoreVertical, Cast, Bell, Home, Compass, PlaySquare, MonitorPlay, Mic, Pause, Volume2, VolumeX, Maximize, Minimize, PlusCircle, Sparkles, Wand2, Upload, Video } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Play, Youtube, AlertCircle, Loader2, X, ThumbsUp, ThumbsDown, Share2, Download, Bookmark, MessageSquare, MoreVertical, Cast, Bell, Home, Compass, PlaySquare, MonitorPlay, Mic, Pause, Volume2, VolumeX, Maximize, Minimize, PlusCircle, Sparkles, Wand2, Upload, Video } from 'lucide-react';
 import YouTube from 'react-youtube';
 import { GoogleGenAI } from '@google/genai';
 
@@ -93,6 +93,19 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
 
+  // Touch Gesture & Custom HUD States
+  const [showVolumeHud, setShowVolumeHud] = useState(false);
+  const [volumeHudValue, setVolumeHudValue] = useState(100);
+  const [doubleTapFeedback, setDoubleTapFeedback] = useState<{ type: 'back' | 'forward' | null; x: number; y: number }>({ type: null, x: 0, y: 0 });
+  const [doubleTapFeedbackCounter, setDoubleTapFeedbackCounter] = useState(0);
+
+  const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
+  const touchStartYRef = useRef<number | null>(null);
+  const touchStartVolumeRef = useRef<number | null>(null);
+  const singleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const volumeHudTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // AI Generator State
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showAiGenerator, setShowAiGenerator] = useState(false);
@@ -133,6 +146,9 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
     return () => {
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current);
+      if (volumeHudTimeoutRef.current) clearTimeout(volumeHudTimeoutRef.current);
+      if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
     }
   }, [selectedVideo]);
 
@@ -306,10 +322,146 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
     }
   };
 
+  const handleDoubleTapSeek = (direction: 'back' | 'forward') => {
+    if (!playerInfo) return;
+    const currentTime = playerInfo.getCurrentTime();
+    const videoDuration = playerInfo.getDuration() || 100;
+    const seekOffset = direction === 'back' ? -10 : 10;
+    const targetProgress = Math.max(0, Math.min(videoDuration, currentTime + seekOffset));
+    
+    playerInfo.seekTo(targetProgress, true);
+    setProgress(targetProgress);
+    
+    // Set double-tap feedback
+    setDoubleTapFeedback({
+      type: direction,
+      x: direction === 'back' ? 25 : 75,
+      y: 50
+    });
+    setDoubleTapFeedbackCounter(prev => prev + 1);
+    
+    if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setDoubleTapFeedback({ type: null, x: 0, y: 0 });
+    }, 750);
+  };
+
+  const handleGestureTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const width = rect.width;
+    
+    const now = Date.now();
+    const timeDelta = now - lastTapRef.current.time;
+    
+    // Check if double tap occurred
+    if (timeDelta < 300) {
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current);
+      
+      const isLeft = x < width * 0.45;
+      const isRight = x > width * 0.55;
+      
+      if (isLeft) {
+        handleDoubleTapSeek('back');
+      } else if (isRight) {
+        handleDoubleTapSeek('forward');
+      }
+      
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
+      return;
+    }
+    
+    // Record current tap
+    lastTapRef.current = { time: now, x, y };
+    
+    // If on the right 45% of the video container, start vertical swipe volume detection
+    if (x > width * 0.55) {
+      touchStartYRef.current = touch.clientY;
+      touchStartVolumeRef.current = volume;
+    }
+  };
+
+  const handleGestureTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartYRef.current !== null && touchStartVolumeRef.current !== null) {
+      const touch = e.touches[0];
+      const deltaY = touchStartYRef.current - touch.clientY; // Swipe up goes negative clientY, making delta positive
+      
+      const rect = e.currentTarget.getBoundingClientRect();
+      const changeRange = Math.max(100, rect.height * 0.7); // 70% of video height for 0-100% volume change
+      const volumeDelta = Math.round((deltaY / changeRange) * 100);
+      const newVolume = Math.max(0, Math.min(100, touchStartVolumeRef.current + volumeDelta));
+      
+      setVolume(newVolume);
+      setVolumeHudValue(newVolume);
+      setIsMuted(newVolume === 0);
+      
+      if (playerInfo) {
+        playerInfo.setVolume(newVolume);
+        if (newVolume > 0) playerInfo.unMute();
+        else playerInfo.mute();
+      }
+      
+      setShowVolumeHud(true);
+      if (volumeHudTimeoutRef.current) clearTimeout(volumeHudTimeoutRef.current);
+      volumeHudTimeoutRef.current = setTimeout(() => {
+        setShowVolumeHud(false);
+      }, 1500);
+    }
+  };
+
+  const handleGestureTouchEnd = () => {
+    touchStartYRef.current = null;
+    touchStartVolumeRef.current = null;
+  };
+
+  const handleGestureSingleTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const width = rect.width;
+    
+    const now = Date.now();
+    const timeDelta = now - lastTapRef.current.time;
+    
+    if (timeDelta < 300) {
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current);
+      const isLeft = x < width * 0.45;
+      const isRight = x > width * 0.55;
+      if (isLeft) {
+        handleDoubleTapSeek('back');
+      } else if (isRight) {
+        handleDoubleTapSeek('forward');
+      }
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
+      return;
+    }
+    
+    lastTapRef.current = { time: now, x, y: e.clientY - rect.top };
+    
+    if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current);
+    singleTapTimeoutRef.current = setTimeout(() => {
+      setShowControls(prev => !prev);
+    }, 300);
+  };
+
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+  };
+
+  const toggleFullscreen = () => {
+    if (!playerContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      playerContainerRef.current.requestFullscreen().catch((err) => {
+        console.error("Error enabling fullscreen", err);
+      });
+    } else {
+      document.exitFullscreen().catch((err) => {
+        console.error("Error exiting fullscreen", err);
+      });
+    }
   };
 
   const handleMouseMove = () => {
@@ -568,8 +720,33 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       {/* Video List */}
       <div className="flex-1 overflow-y-auto pb-16">
         {isLoading ? (
-          <div className="flex justify-center items-center h-40">
-            <Loader2 className="w-8 h-8 animate-spin text-red-600" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-0 sm:p-4">
+            {[...Array(8)].map((_, idx) => (
+              <div key={idx} className="flex flex-col sm:rounded-xl overflow-hidden bg-[#0f0f0f] sm:bg-[#181818] animate-pulse">
+                {/* Thumbnail skeleton */}
+                <div className="aspect-video w-full bg-[#272727] relative overflow-hidden" />
+                
+                {/* Info block skeleton */}
+                <div className="p-3 flex gap-3">
+                  {/* Channel icon */}
+                  <div className="w-10 h-10 rounded-full bg-[#272727] shrink-0" />
+                  
+                  {/* Text details */}
+                  <div className="flex-1 flex flex-col space-y-2 py-1">
+                    {/* Title lines */}
+                    <div className="h-4 bg-[#272727] rounded w-[92%]" />
+                    <div className="h-4 bg-[#272727] rounded w-[60%]" />
+                    
+                    {/* Under-title meta */}
+                    <div className="flex items-center gap-1.5 pt-1.5">
+                      <div className="h-3 bg-[#242424] rounded w-2/5" />
+                      <span className="text-[10px] text-[#242424] select-none">•</span>
+                      <div className="h-3 bg-[#242424] rounded w-1/4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="p-6 flex flex-col items-center text-center text-gray-400 mt-10">
@@ -863,9 +1040,10 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
       >
         <div 
           ref={playerContainerRef}
-          className={`w-full bg-black sticky top-0 z-40 relative group shrink-0 ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
+          className={`w-full bg-black sticky top-0 z-40 relative group shrink-0 overflow-hidden ${isFullscreen ? 'h-screen' : 'aspect-video'}`}
+          onMouseMove={handleMouseMove}
         >
-          <div className="w-full h-full">
+          <div className="w-full h-full pointer-events-none select-none">
             <YouTube 
               videoId={videoId} 
               opts={{
@@ -873,13 +1051,13 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
                 height: '100%',
                 playerVars: {
                   autoplay: 1,
-                  controls: 1,
-                  disablekb: 0,
+                  controls: 0,
+                  disablekb: 1,
                   modestbranding: 1,
                   rel: 0,
                   showinfo: 0,
                   iv_load_policy: 3,
-                  fs: 1,
+                  fs: 0,
                   playsinline: 1
                 }
               }}
@@ -890,15 +1068,185 @@ export default function YouTubeApp({ onBack }: YouTubeAppProps) {
             />
           </div>
 
-          {/* Persistent Back Button */}
-          <div className="absolute top-2 left-2 z-50 pointer-events-none">
-            <button 
-              onClick={() => setSelectedVideo(null)} 
-              className="p-2 bg-black/60 text-white hover:bg-black/80 rounded-full transition-colors pointer-events-auto backdrop-blur-md shadow-lg"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          </div>
+          {/* Gesture Capture Overlay */}
+          <div 
+            className="absolute inset-0 z-30 cursor-pointer"
+            onTouchStart={handleGestureTouchStart}
+            onTouchMove={handleGestureTouchMove}
+            onTouchEnd={handleGestureTouchEnd}
+            onClick={handleGestureSingleTap}
+          />
+
+          {/* Double-tap feedback visual ripples */}
+          <AnimatePresence>
+            {doubleTapFeedback.type && (
+              <motion.div
+                key={`${doubleTapFeedback.type}-${doubleTapFeedbackCounter}`}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className={`absolute top-0 bottom-0 z-35 flex flex-col items-center justify-center pointer-events-none w-1/3 bg-white/5 backdrop-blur-[1px] transition-all ${
+                  doubleTapFeedback.type === 'back' ? 'left-0 rounded-r-[100px]' : 'right-0 rounded-l-[100px]'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2 bg-black/60 px-4 py-3 rounded-2xl border border-white/10 shadow-lg">
+                  <motion.div
+                    animate={doubleTapFeedback.type === 'back' 
+                      ? { x: [0, -8, 0] } 
+                      : { x: [0, 8, 0] }
+                    }
+                    transition={{ repeat: Infinity, duration: 0.6 }}
+                    className="text-white font-bold"
+                  >
+                    {doubleTapFeedback.type === 'back' ? (
+                      <div className="flex items-center gap-1">
+                        <ChevronLeft className="w-6 h-6 text-red-500 fill-red-500" />
+                        <ChevronLeft className="w-4 h-4 text-white" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <ChevronRight className="w-4 h-4 text-white" />
+                        <ChevronRight className="w-6 h-6 text-red-500 fill-red-500" />
+                      </div>
+                    )}
+                  </motion.div>
+                  <span className="text-[10px] font-mono font-black tracking-widest text-white">
+                    {doubleTapFeedback.type === 'back' ? '-10 SEC' : '+10 SEC'}
+                  </span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Vertical sleek iOS-style Volume HUD */}
+          <AnimatePresence>
+            {showVolumeHud && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ type: "spring", damping: 18 }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/75 backdrop-blur-lg px-3 py-4 rounded-2xl flex flex-col items-center gap-3 border border-white/10 z-50 shadow-2xl pointer-events-none"
+              >
+                {volumeHudValue === 0 ? (
+                  <VolumeX className="w-4 h-4 text-red-400 animate-pulse" />
+                ) : (
+                  <Volume2 className="w-4 h-4 text-indigo-400" />
+                )}
+                <div className="w-1.5 h-20 bg-white/15 rounded-full relative overflow-hidden">
+                  <div 
+                    className="bg-gradient-to-t from-indigo-500 to-purple-500 absolute bottom-0 left-0 right-0 rounded-full transition-all duration-75" 
+                    style={{ height: `${volumeHudValue}%` }} 
+                  />
+                </div>
+                <span className="text-[10px] font-mono font-bold text-white/90">{volumeHudValue}%</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Custom Controls HUD Layer */}
+          <AnimatePresence>
+            {showControls && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/45 backdrop-blur-[1px] z-40 flex flex-col justify-between pointer-events-none"
+              >
+                {/* 1. Top Bar */}
+                <div className="flex items-center justify-between p-3 bg-gradient-to-b from-black/80 to-transparent pointer-events-auto">
+                  <button 
+                    onClick={() => setSelectedVideo(null)} 
+                    className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all active:scale-95"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <span className="text-xs font-semibold px-3 py-1 bg-black/40 rounded-md border border-white/5 truncate max-w-[60%] sm:max-w-xs text-white/90" dangerouslySetInnerHTML={{ __html: selectedVideo.snippet.title }} />
+                  <div className="flex items-center gap-2">
+                    <Cast className="w-4 h-4 text-white/80" />
+                    <button className="p-1 hover:bg-white/10 rounded-full text-white/80"><MoreVertical className="w-4 h-4" /></button>
+                  </div>
+                </div>
+
+                {/* 2. Middle Controls Row */}
+                <div className="flex items-center justify-center gap-8 pointer-events-auto">
+                  <button 
+                    onClick={() => handleDoubleTapSeek('back')}
+                    className="p-3 bg-black/45 hover:bg-black/60 rounded-full text-white/95 border border-white/5 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  
+                  <button 
+                    onClick={togglePlay}
+                    className="p-5 bg-white text-black hover:bg-zinc-200 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-90"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-8 h-8 fill-black" />
+                    ) : (
+                      <Play className="w-8 h-8 fill-black" />
+                    )}
+                  </button>
+
+                  <button 
+                    onClick={() => handleDoubleTapSeek('forward')}
+                    className="p-3 bg-black/45 hover:bg-black/60 rounded-full text-white/95 border border-white/5 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* 3. Bottom Control Bar */}
+                <div className="p-3 bg-gradient-to-t from-black/80 to-transparent flex flex-col gap-2 pointer-events-auto">
+                  {/* Progress Seek Slider */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-mono text-white/80">{formatTime(progress)}</span>
+                    <input 
+                      type="range" 
+                      min={0} 
+                      max={duration || 100} 
+                      value={progress} 
+                      onChange={handleSeek}
+                      className="flex-1 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-red-650 focus:outline-none transition-all hover:h-1.5 focus:h-1.5"
+                    />
+                    <span className="text-[10px] font-mono text-white/80">{formatTime(duration)}</span>
+                  </div>
+
+                  {/* Play/Volume/Fullscreen Footer */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-4">
+                      <button onClick={togglePlay} className="text-white hover:text-red-500 transition-colors">
+                        {isPlaying ? <Pause className="w-4 h-4 animate-pulse" /> : <Play className="w-4 h-4 fill-white" />}
+                      </button>
+                      
+                      {/* Volume controller */}
+                      <div className="flex items-center gap-2 group-volume">
+                        <button onClick={toggleMute} className="text-white hover:text-indigo-405 transition-colors">
+                          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        </button>
+                        <input 
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={volume}
+                          onChange={handleVolumeChange}
+                          className="w-16 h-1 bg-white/25 rounded-lg appearance-none cursor-pointer accent-indigo-550 hover:h-1.5 focus:outline-none hidden sm:block"
+                        />
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={toggleFullscreen}
+                      className="p-1.5 hover:bg-white/10 rounded-lg text-white transition-all active:scale-95"
+                    >
+                      {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         <div id="player-scroll-container" className="flex-1 overflow-y-auto">
