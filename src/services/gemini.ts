@@ -272,7 +272,7 @@ export async function compareModels(
 
   const [responseA, responseB] = await Promise.all([
     getGeminiClient().models.generateContent({
-      model: mode === 'image' ? 'gemini-2.5-flash-image' : (modelAId.includes('style') ? 'gemini-3.1-pro-preview' : modelAId),
+      model: mode === 'image' ? 'gemini-3.1-flash-lite-image' : (modelAId.includes('style') ? 'gemini-3.1-pro-preview' : modelAId),
       contents: { parts: partsA },
       config: mode === 'image' ? {
         imageConfig: { aspectRatio: "1:1" }
@@ -282,7 +282,7 @@ export async function compareModels(
       },
     }),
     getGeminiClient().models.generateContent({
-      model: mode === 'image' ? 'gemini-2.5-flash-image' : (modelBId.includes('style') ? 'gemini-3.1-pro-preview' : modelBId),
+      model: mode === 'image' ? 'gemini-3.1-flash-lite-image' : (modelBId.includes('style') ? 'gemini-3.1-pro-preview' : modelBId),
       contents: { parts: partsB },
       config: mode === 'image' ? {
         imageConfig: { aspectRatio: "1:1" }

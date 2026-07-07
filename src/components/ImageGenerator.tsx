@@ -159,7 +159,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
 
         try {
           const response = await ai.models.generateContent({
-             model: 'gemini-2.5-flash-image',
+             model: 'gemini-3.1-flash-lite-image',
              contents: { parts: contentsParts },
              config: {
                imageConfig: { aspectRatio: aspectRatio }
@@ -206,7 +206,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
         }
       } else {
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-image',
+          model: 'gemini-3.1-flash-lite-image',
           contents: {
             parts: [
               { text: finalPrompt }
@@ -301,7 +301,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
       ];
 
       const response = await ai.models.generateContent({
-         model: 'gemini-2.5-flash-image',
+         model: 'gemini-3.1-flash-lite-image',
          contents: { parts: contentsParts },
          config: {}
       });
