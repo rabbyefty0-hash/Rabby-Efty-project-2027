@@ -297,16 +297,19 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
 
       const contentsParts: any[] = [
          { inlineData: { data: referenceImage.base64, mimeType: referenceImage.mimeType } },
-         { text: `Edit this image based on the following instructions: ${finalPrompt}. Provide ONLY the edited image, no text.` }
+         { text: finalPrompt }
       ];
 
       const response = await ai.models.generateContent({
          model: 'gemini-3.1-flash-lite-image',
          contents: { parts: contentsParts },
-         config: {}
+         config: {
+           imageConfig: { aspectRatio: aspectRatio }
+         }
       });
 
       let found = false;
+      let responseText = '';
       if (response.candidates?.[0]?.content?.parts) {
         for (const part of response.candidates[0].content.parts) {
           if (part.inlineData) {
@@ -316,10 +319,18 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
              found = true;
              console.log(`Generated and saved edited image.`);
              break;
+          } else if (part.text) {
+             responseText += part.text + ' ';
           }
         }
       }
-      if (!found) throw new Error("The AI failed to edit your image. Try refinement.");
+      if (!found) {
+        if (responseText.trim()) {
+          throw new Error(responseText.trim());
+        } else {
+          throw new Error("The AI failed to edit your image. Try refinement.");
+        }
+      }
     } catch (imgError: any) {
        console.error("Image editing error", imgError);
        const errMsg = imgError.message || String(imgError);
