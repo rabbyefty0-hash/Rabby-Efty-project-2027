@@ -50,7 +50,7 @@ const WorkspaceHub = lazy(() => import('./components/WorkspaceHub').then(m => ({
 
 const TextGenerator = lazy(() => import('./components/TextGenerator').then(m => ({ default: m.TextGenerator })));
 
-type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search' | 'text-gen' | 'media-player' | 'workspace';
+type Tab = 'home' | 'apps' | 'image' | 'video' | 'voice' | 'vpn' | 'browser' | 'unblocker' | 'downloader' | 'fb-autolike' | 'build-apk' | 'arena-ai' | 'status' | 'card-gen' | 'temp-mail' | 'temp-number' | 'whatsapp' | 'file-manager' | 'gallery' | 'settings' | 'followeran' | 'calculator' | 'notes' | 'weather' | 'calendar' | 'maps' | 'camera' | 'clock' | 'contacts' | 'music' | 'youtube' | 'ai-search' | 'text-gen' | 'media-player' | 'workspace' | 'google-flow';
 
 export const APPS = [
   { id: 'workspace', name: 'Google Workspace', icon: LayoutGrid, color: 'text-indigo-400', bg: 'bg-gradient-to-br from-white to-gray-100' },
@@ -86,6 +86,7 @@ export const APPS = [
   { id: 'clock', name: 'Clock', icon: Clock, color: 'text-black', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'contacts', name: 'Contacts', icon: Users, color: 'text-blue-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
   { id: 'music', name: 'Music', icon: Music, color: 'text-pink-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
+  { id: 'google-flow', name: 'Google FLOW AI', icon: Sparkles, color: 'text-purple-500', bg: 'bg-gradient-to-br from-white to-gray-100' },
 ];
 
 function AppContent() {
@@ -458,11 +459,16 @@ function AppContent() {
   };
 
   const handleNavigate = (tab: Tab) => {
-    setActiveTab(tab);
-    setHistory(prev => [...prev, tab]);
+    let finalTab = tab;
+    if (tab === 'google-flow') {
+      sessionStorage.setItem('video_app_mode', 'google-flow');
+      finalTab = 'video';
+    }
+    setActiveTab(finalTab);
+    setHistory(prev => [...prev, finalTab]);
     setForwardHistory([]);
-    if (tab !== 'home' && tab !== 'apps' && tab !== 'status') {
-      const appInfo = APPS.find(a => a.id === tab);
+    if (finalTab !== 'home' && finalTab !== 'apps' && finalTab !== 'status') {
+      const appInfo = APPS.find(a => a.id === tab || (finalTab === 'video' && a.id === 'google-flow'));
       if (appInfo && (window as any).showNotification) {
         (window as any).showNotification(appInfo.name, "Application opened");
       }
@@ -777,12 +783,7 @@ function AppContent() {
             if ((e.target as HTMLElement).closest('.back-btn')) return;
             
             if (e.detail === 1) {
-              if (isDynamicIslandExpanded) {
-                handleNavigate('status');
-                setIsDynamicIslandExpanded(false);
-              } else {
-                setIsDynamicIslandExpanded(true);
-              }
+              setIsDynamicIslandExpanded(!isDynamicIslandExpanded);
             }
           }}
           className={`dynamic-island liquid-glass ${isDynamicIslandExpanded ? 'w-72 h-20' : (activeTab !== 'home' ? 'w-[140px]' : 'w-[126px]')} h-[36px] cursor-pointer ios-shadow relative`}
@@ -1051,44 +1052,36 @@ function AppContent() {
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="max-w-[320px] sm:max-w-md w-full mx-auto glass-dock liquid-glass p-3.5 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl mb-4"
+              className="max-w-[320px] sm:max-w-md w-full mx-auto glass-dock liquid-glass p-2 flex justify-around items-center pointer-events-auto ios-shadow rounded-[2.5rem] border border-white/30 shadow-[0_20px_40px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.5)] backdrop-blur-2xl mb-4"
             >
-              <motion.button 
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleNavigate('home')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
-              >
-                <HomeIcon className="w-6 h-6" />
-                <span className="text-[10px] font-medium">Home</span>
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleNavigate('apps')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'apps' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
-              >
-                <LayoutGrid className="w-6 h-6" />
-                <span className="text-[10px] font-medium">Apps</span>
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleNavigate('ai-search')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'ai-search' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
-              >
-                <Search className="w-6 h-6" />
-                <span className="text-[10px] font-medium">AI Search</span>
-              </motion.button>
-              <motion.button 
-                whileHover={{ scale: 1.1, y: -2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handleNavigate('settings')}
-                className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'settings' ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
-              >
-                <Settings className="w-6 h-6" />
-                <span className="text-[10px] font-medium">Settings</span>
-              </motion.button>
+              {([
+                { id: 'home', icon: HomeIcon, label: 'Home' },
+                { id: 'apps', icon: LayoutGrid, label: 'Apps' },
+                { id: 'ai-search', icon: Search, label: 'AI Search' },
+                { id: 'settings', icon: Settings, label: 'Settings' }
+              ] as const).map((tab) => {
+                const isActive = activeTab === tab.id;
+                const Icon = tab.icon;
+                return (
+                  <motion.button 
+                    key={tab.id}
+                    whileHover={{ scale: 1.08, y: -2 }}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={() => handleNavigate(tab.id as any)}
+                    className="flex flex-col items-center justify-center gap-1 px-4.5 py-2 rounded-2xl relative transition-colors"
+                  >
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeDockTab"
+                        className="absolute inset-0 bg-white/15 dark:bg-white/10 border border-white/15 rounded-2xl shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.15)] -z-10"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <Icon className={`w-5.5 h-5.5 transition-all ${isActive ? 'text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]' : 'text-white/50 hover:text-white/80'}`} />
+                    <span className={`text-[9px] font-bold tracking-tight ${isActive ? 'text-white font-black' : 'text-white/40'}`}>{tab.label}</span>
+                  </motion.button>
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>

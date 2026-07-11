@@ -25,18 +25,22 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return (isAuthenticated() && request.auth.uid == userId) ||
+             (request.auth == null && (userId.matches("^guest_.*$") || userId.matches("^guest_whatsapp_sim_.*$")));
     }
 
     function isValidUser(data) {
       return data.keys().hasAll(['uid']) &&
              data.uid is string &&
-             (!('email' in data) || (data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))) &&
+             (request.auth == null || data.uid == request.auth.uid) &&
+             (!('email' in data) || (data.email is string && (data.email == "" || data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$")))) &&
              (!('phoneNumber' in data) || data.phoneNumber is string) &&
              (!('displayName' in data) || data.displayName is string) &&
              (!('photoURL' in data) || data.photoURL is string) &&
              (!('isOnline' in data) || data.isOnline is bool) &&
-             (!('lastSeen' in data) || data.lastSeen is timestamp);
+             (!('lastSeen' in data) || data.lastSeen is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('lastLogin' in data) || data.lastLogin is timestamp);
     }
 
     // ===============================================================
@@ -44,8 +48,8 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      // Users can read any profile to see contacts
-      allow read: if isAuthenticated();
+      // Allow all reads so guest and authenticated users can view contacts
+      allow read: if true;
       
       // Users can create/update their own profile with validation
       allow create: if isOwner(userId) && isValidUser(request.resource.data);
@@ -54,12 +58,14 @@ service cloud.firestore {
     }
 
     match /chats/{chatId} {
-      // Allow read/write if the user is a participant
-      allow read, write: if isAuthenticated() && request.auth.uid in chatId.split('_');
+      // Allow read/write if the user is a participant or if it is a guest chat
+      allow read, write: if (isAuthenticated() && (chatId.matches(".*" + request.auth.uid + ".*") || request.auth.uid in chatId.split('_'))) ||
+                            (request.auth == null && chatId.matches("^.*guest_whatsapp_sim_.*$"));
 
       match /messages/{messageId} {
-        // Allow read/write if the user is a participant of the parent chat
-        allow read, write: if isAuthenticated() && request.auth.uid in chatId.split('_');
+        // Allow read/write if the user is a participant or if it is a guest chat
+        allow read, write: if (isAuthenticated() && (chatId.matches(".*" + request.auth.uid + ".*") || request.auth.uid in chatId.split('_'))) ||
+                              (request.auth == null && chatId.matches("^.*guest_whatsapp_sim_.*$"));
       }
     }
 

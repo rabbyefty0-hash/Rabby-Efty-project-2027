@@ -15,11 +15,24 @@ googleProvider.addScope('https://www.googleapis.com/auth/chat.messages');
 googleProvider.addScope('https://www.googleapis.com/auth/meetings.space.created');
 googleProvider.addScope('https://www.googleapis.com/auth/meetings.space.readonly');
 
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('google_access_token') : null;
 
-export const getAccessToken = () => cachedAccessToken;
+export const getAccessToken = () => {
+  if (!cachedAccessToken && typeof window !== 'undefined') {
+    cachedAccessToken = localStorage.getItem('google_access_token');
+  }
+  return cachedAccessToken;
+};
+
 export const setAccessToken = (token: string | null) => {
   cachedAccessToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      localStorage.setItem('google_access_token', token);
+    } else {
+      localStorage.removeItem('google_access_token');
+    }
+  }
 };
 
 export const signInWithGoogle = async () => {
@@ -27,7 +40,7 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (credential?.accessToken) {
-      cachedAccessToken = credential.accessToken;
+      setAccessToken(credential.accessToken);
     }
     const user = result.user;
     
@@ -35,9 +48,9 @@ export const signInWithGoogle = async () => {
     const userRef = doc(db, 'users', user.uid);
     await setDoc(userRef, {
       uid: user.uid,
-      displayName: user.displayName,
-      email: user.email,
-      photoURL: user.photoURL,
+      displayName: user.displayName || 'Unknown User',
+      email: user.email || '',
+      photoURL: user.photoURL || '',
       lastLogin: serverTimestamp(),
       createdAt: serverTimestamp() // setDoc with merge: true or check if exists
     }, { merge: true });
@@ -92,7 +105,7 @@ export const signInWithPhoneMock = async (phoneNumber: string) => {
 };
 
 export const logout = () => {
-  cachedAccessToken = null;
+  setAccessToken(null);
   return signOut(auth);
 };
 

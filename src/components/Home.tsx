@@ -482,43 +482,56 @@ const ClockWidget = memo(() => {
   
   return (
     <div className="w-full relative group select-none">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-rose-500/10 rounded-[2.2rem] blur-xl transition-all duration-700 group-hover:blur-2xl opacity-80" />
-      <div className="relative bg-white/40 dark:bg-black/35 backdrop-blur-[45px] border border-white/20 dark:border-white/10 shadow-[0_12px_40px_rgba(0,0,0,0.1),inset_0_1px_2px_rgba(255,255,255,0.4)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.1)] rounded-[2.2rem] p-6 flex flex-col justify-between overflow-hidden min-h-[15.5rem]">
-        <div className="absolute top-0 right-0 w-44 h-44 bg-indigo-500/10 dark:bg-indigo-500/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-rose-500/15 rounded-full blur-3xl pointer-events-none" />
+      {/* Animated futuristic background glow meshes */}
+      <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[2.4rem] blur-xl opacity-40 group-hover:opacity-60 transition-all duration-700 animate-pulse pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/30 to-rose-500/25 rounded-[2.2rem] blur-2xl transition-all duration-1000 group-hover:scale-105 opacity-80 pointer-events-none" />
+      
+      {/* Frosted Glass Container with internal glows */}
+      <div className="relative bg-white/20 dark:bg-black/30 backdrop-blur-[50px] border-2 border-white/30 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.1),_inset_0_1px_3px_rgba(255,255,255,0.6)] dark:shadow-[0_20px_50px_rgba(99,102,241,0.25),_inset_0_1px_1px_rgba(255,255,255,0.25)] rounded-[2.2rem] p-6 flex flex-col justify-between overflow-hidden min-h-[16.5rem] transition-all duration-500 hover:border-indigo-400/50 dark:hover:border-indigo-400/40">
         
-        <div className="flex justify-between items-center w-full relative z-10">
+        {/* Soft floating glowing spheres */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-indigo-500/20 dark:bg-indigo-500/35 rounded-full blur-3xl pointer-events-none animate-pulse duration-[8000ms]" />
+        <div className="absolute -bottom-8 -left-8 w-36 h-36 bg-pink-500/20 dark:bg-rose-500/25 rounded-full blur-3xl pointer-events-none animate-pulse duration-[6000ms]" />
+        
+        {/* Top bar */}
+        <div className="flex justify-between items-start w-full relative z-10">
           <div className="flex flex-col">
-            <span className="text-[10px] font-black tracking-[0.18em] uppercase text-slate-500 dark:text-neutral-450">
+            <span className="text-[10px] font-black tracking-[0.2em] uppercase text-indigo-700 dark:text-indigo-300 drop-shadow-[0_0_10px_rgba(99,102,241,0.2)]">
               {currentTime.toLocaleDateString('en-US', { weekday: 'long' })}
             </span>
-            <span className="text-sm font-bold text-slate-800 dark:text-white leading-tight">
+            <span className="text-sm font-black text-slate-800 dark:text-white/90 leading-tight tracking-tight">
               {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </span>
           </div>
           
-          <div className="relative w-8 h-8 flex items-center justify-center">
+          {/* Glowing Circle Clock Progress Track */}
+          <div className="relative w-10 h-10 flex items-center justify-center bg-white/10 dark:bg-black/20 rounded-full border border-white/20 dark:border-white/5 shadow-inner">
             <svg className="w-8 h-8 -rotate-90">
-              <circle cx="16" cy="16" r="13" className="stroke-slate-200 dark:stroke-white/10 fill-none" strokeWidth="2.5" />
-              <circle cx="16" cy="16" r="13" className="stroke-indigo-500 fill-none" strokeWidth="2.5" strokeDasharray="81.68" strokeDashoffset={81.68 - (81.68 * dayPercentage) / 100} strokeLinecap="round" />
+              <circle cx="16" cy="16" r="13" className="stroke-slate-300/40 dark:stroke-white/10 fill-none" strokeWidth="2.5" />
+              <circle cx="16" cy="16" r="13" className="stroke-indigo-500 dark:stroke-indigo-400 fill-none drop-shadow-[0_0_8px_rgba(99,102,241,0.8)]" strokeWidth="2.5" strokeDasharray="81.68" strokeDashoffset={81.68 - (81.68 * dayPercentage) / 100} strokeLinecap="round" />
             </svg>
-            <Clock className="w-3.5 h-3.5 absolute text-indigo-500 dark:text-indigo-400" />
+            <Clock className="w-3.5 h-3.5 absolute text-indigo-600 dark:text-indigo-300 animate-pulse" />
           </div>
         </div>
         
-        <div className="my-auto py-2 flex flex-col relative z-10">
-          <h1 className="text-6xl font-light tracking-tighter text-slate-900 dark:text-white leading-none flex items-baseline">
-            {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-            <span className="text-[10px] font-bold text-indigo-500 dark:text-rose-450 ml-2 animate-ping">●</span>
+        {/* Main Time Display with custom neon-like text-shadow glows */}
+        <div className="my-auto py-3 flex flex-col relative z-10">
+          <h1 className="text-6.5xl font-black tracking-tighter text-slate-900 dark:text-white leading-none flex items-baseline drop-shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:drop-shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-800 dark:from-white dark:to-zinc-100">
+              {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+            </span>
+            <span className="text-xs text-indigo-500 dark:text-indigo-400 ml-2 animate-ping drop-shadow-[0_0_10px_rgba(99,102,241,0.8)]">●</span>
           </h1>
-          <span className="text-[10px] font-mono tracking-widest text-slate-500 dark:text-white/40 mt-1 uppercase">
-            EST ZONE • ACTIVE REFRESH SEC: {currentTime.getSeconds().toString().padStart(2, '0')}
+          <span className="text-[9px] font-mono tracking-[0.25em] text-slate-600 dark:text-indigo-200/60 mt-2.5 uppercase font-bold flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            LIVE TIME SEC: {currentTime.getSeconds().toString().padStart(2, '0')}
           </span>
         </div>
         
-        <div className="flex items-center gap-2.5 bg-slate-100/60 dark:bg-white/10 px-4 py-2 rounded-2xl w-fit border border-slate-200/50 dark:border-white/10 shadow-sm backdrop-blur-md relative z-10">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-yellow-300 animate-pulse" />
-          <span className="text-[10px] font-extrabold tracking-[0.1em] uppercase text-slate-700 dark:text-white/95">{getGreeting()}</span>
+        {/* Bottom bar - Glowing interactive label */}
+        <div className="flex items-center gap-2.5 bg-indigo-50/60 dark:bg-indigo-950/40 px-4 py-2.5 rounded-2xl w-fit border border-indigo-200/50 dark:border-indigo-500/20 shadow-[0_4px_12px_rgba(99,102,241,0.08)] dark:shadow-[0_4px_20px_rgba(99,102,241,0.15)] backdrop-blur-md relative z-10 transition-all group-hover:scale-105 duration-350">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-yellow-300 animate-bounce" />
+          <span className="text-[10px] font-black tracking-[0.12em] uppercase text-indigo-950 dark:text-indigo-100">{getGreeting()}</span>
         </div>
       </div>
     </div>
@@ -1016,7 +1029,7 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
   const filteredApps = useMemo(() => {
     if (!searchQuery) {
       return APPS.filter(app => [
-        'camera', 'gallery', 'image', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 
+        'camera', 'gallery', 'image', 'video', 'voice', 'vpn', 'file-manager', 'browser', 'unblocker', 'youtube', 'whatsapp', 
         'settings', 'calculator', 'weather', 'calendar', 'clock', 'music', 'maps', 'contacts', 
         'downloader', 'workspace', 'media-player'
       ].includes(app.id));
@@ -1030,6 +1043,16 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
     >
       <div className="w-full h-full relative">
         
+        {/* Elegant Minimalist Greeting / Header */}
+        <div className="text-left mb-6 px-1 sm:px-2 pt-2 select-none">
+          <p className="text-[10px] font-black tracking-[0.25em] uppercase text-indigo-500 dark:text-indigo-400">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
+          </p>
+          <h1 className="text-3xl font-light tracking-tight text-slate-900 dark:text-white mt-1">
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </h1>
+        </div>
+
         {/* Persistent Search Bar */}
         <div className="w-full relative z-30 mb-6 px-1 sm:px-2">
           <div className="relative">
@@ -1103,13 +1126,7 @@ export function Home({ onNavigate, recentApps }: HomeProps) {
           </div>
         )}
 
-        {/* Home Screen Apps Section Header */}
-        {!searchQuery && (
-          <div className="flex items-center gap-2 mb-3 pl-1.5 mt-8 border-b border-slate-200/50 dark:border-white/5 pb-2">
-            <LayoutGrid className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-            <h3 className="text-slate-600 dark:text-white/60 font-black text-[10px] tracking-widest uppercase">System Dashboard</h3>
-          </div>
-        )}
+
 
         {/* Home Screen Apps Grid */}
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-y-7 gap-x-3 sm:gap-x-5 mb-12 mt-4 px-1 sm:px-2">
