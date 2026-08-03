@@ -125,6 +125,50 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
     reader.readAsDataURL(file);
   };
 
+  const parseGeminiImageResponse = (response: any, defaultFallbackMsg: string): string => {
+    let responseText = '';
+    const candidate = response.candidates?.[0];
+    if (candidate?.content?.parts) {
+      for (const part of candidate.content.parts) {
+        if (part.inlineData) {
+          const base64Image = part.inlineData.data;
+          return `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
+        } else if (part.text) {
+          responseText += part.text + ' ';
+        }
+      }
+    }
+
+    const trimmedText = responseText.trim();
+    if (trimmedText) {
+      throw new Error(trimmedText);
+    }
+
+    const finishReason = candidate?.finishReason;
+    const finishMessage = candidate?.finishMessage;
+    const blockReason = response.promptFeedback?.blockReason;
+    const blockMessage = response.promptFeedback?.blockReasonMessage;
+
+    if (
+      (finishReason && (finishReason.includes('SAFETY') || finishReason.includes('BLOCK') || finishReason.includes('FILTER'))) ||
+      (blockReason && (blockReason.includes('SAFETY') || blockReason.includes('BLOCK') || blockReason.includes('FILTER')))
+    ) {
+      throw new Error("Content Safety Notice: The AI safety filter prevented this generation. Please modify your prompt or select a different reference image.");
+    }
+    if (finishReason === 'IMAGE_OTHER' || finishReason === 'OTHER') {
+      throw new Error("Generation Notice: The AI model was unable to generate an image for this prompt. Try rephrasing your prompt or using a simpler description.");
+    }
+    if (finishReason && finishReason !== 'STOP') {
+      const formattedReason = finishReason.replace(/^IMAGE_/, '').toLowerCase().replace(/_/g, ' ');
+      throw new Error(`Generation Notice (${formattedReason}): ${finishMessage || 'Please adjust your prompt or reference image.'}`);
+    }
+    if (blockReason) {
+      throw new Error(`AI request blocked (${blockReason}): ${blockMessage || 'Please try a different prompt.'}`);
+    }
+
+    throw new Error(defaultFallbackMsg);
+  };
+
   const generateImage = async () => {
     if (!prompt.trim()) {
       setError("An empty canvas needs words to come alive.");
@@ -166,29 +210,9 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
              }
           });
 
-          let found = false;
-          let responseText = '';
-          if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-              if (part.inlineData) {
-                 const base64Image = part.inlineData.data;
-                 const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
-                 setGeneratedImages(prev => [dataUrl, ...prev]);
-                 found = true;
-                 console.log(`Generated and saved image.`);
-                 break;
-              } else if (part.text) {
-                 responseText += part.text + ' ';
-              }
-            }
-          }
-          if (!found) {
-            if (responseText.trim()) {
-              throw new Error(responseText.trim());
-            } else {
-              throw new Error("The AI failed to render your vision. Try refinement.");
-            }
-          }
+          const dataUrl = parseGeminiImageResponse(response, "The AI was unable to render your vision. Try refining your prompt or reference image.");
+          setGeneratedImages(prev => [dataUrl, ...prev]);
+          console.log(`Generated and saved image.`);
         } catch (imgError: any) {
            const errMsg = imgError.message || String(imgError);
            if (
@@ -219,31 +243,9 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
           }
         });
         
-        let found = false;
-        let responseText = '';
-        if (response.candidates?.[0]?.content?.parts) {
-          for (const part of response.candidates[0].content.parts) {
-            // Find the image part, do not assume it is the first part.
-            if (part.inlineData) {
-              const base64Image = part.inlineData.data;
-              const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
-              setGeneratedImages(prev => [dataUrl, ...prev]);
-              console.log(`Generated and saved image.`);
-              found = true;
-              break;
-            } else if (part.text) {
-              responseText += part.text + ' ';
-            }
-          }
-        }
-        
-        if (!found) {
-          if (responseText.trim()) {
-            throw new Error(responseText.trim());
-          } else {
-            throw new Error("The AI failed to render your vision. Try refinement.");
-          }
-        }
+        const dataUrl = parseGeminiImageResponse(response, "The AI was unable to render your vision. Try refining your prompt.");
+        setGeneratedImages(prev => [dataUrl, ...prev]);
+        console.log(`Generated and saved image.`);
       }
 
     } catch (err: any) {
@@ -258,6 +260,10 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
         errMsg.includes('xhr error')
       ) {
         setError('Image generation/editing requires a paid Gemini key. Please click Settings > Secrets and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
+      } else if (errMsg.includes('IMAGE_SAFETY') || errMsg.includes('SAFETY') || errMsg.includes('Safety') || errMsg.includes('safety') || errMsg.includes('BLOCK')) {
+        setError('Content Safety Notice: The request was flagged by Gemini safety guidelines. Please modify your prompt or select a different reference image.');
+      } else if (errMsg.includes('IMAGE_OTHER') || errMsg.includes('OTHER') || errMsg.includes('other')) {
+        setError('Generation Notice: The AI model was unable to generate an image for this prompt. Try rephrasing your prompt or using a simpler description.');
       } else {
         setError(errMsg || "Something interrupted the creative spark.");
       }
@@ -308,29 +314,9 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
          }
       });
 
-      let found = false;
-      let responseText = '';
-      if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) {
-             const base64Image = part.inlineData.data;
-             const dataUrl = `data:${part.inlineData.mimeType || 'image/jpeg'};base64,${base64Image}`;
-             setGeneratedImages(prev => [dataUrl, ...prev]);
-             found = true;
-             console.log(`Generated and saved edited image.`);
-             break;
-          } else if (part.text) {
-             responseText += part.text + ' ';
-          }
-        }
-      }
-      if (!found) {
-        if (responseText.trim()) {
-          throw new Error(responseText.trim());
-        } else {
-          throw new Error("The AI failed to edit your image. Try refinement.");
-        }
-      }
+      const dataUrl = parseGeminiImageResponse(response, "The AI was unable to edit your image. Try refining your edit prompt or reference image.");
+      setGeneratedImages(prev => [dataUrl, ...prev]);
+      console.log(`Generated and saved edited image.`);
     } catch (imgError: any) {
        console.error("Image editing error", imgError);
        const errMsg = imgError.message || String(imgError);
@@ -343,6 +329,10 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
          errMsg.includes('xhr error')
        ) {
          setError('Image generation/editing requires a paid Gemini key. Please click Settings > Secrets and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
+       } else if (errMsg.includes('IMAGE_SAFETY') || errMsg.includes('SAFETY') || errMsg.includes('Safety') || errMsg.includes('safety') || errMsg.includes('BLOCK')) {
+         setError('Content Safety Notice: The image edit or prompt was flagged by Gemini safety guidelines. Please adjust your prompt or select a different reference image.');
+       } else if (errMsg.includes('IMAGE_OTHER') || errMsg.includes('OTHER') || errMsg.includes('other')) {
+         setError('Generation Notice: The AI model was unable to edit the image with this prompt. Try simplifying your prompt or selecting a different reference image.');
        } else {
          setError(errMsg || "Failed to edit image.");
        }

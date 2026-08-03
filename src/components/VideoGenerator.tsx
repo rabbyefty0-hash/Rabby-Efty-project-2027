@@ -285,7 +285,7 @@ export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) 
       if (!apiKey) throw new Error('API Key missing');
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: `Create a professional high-quality video storyboard and script breakdown for a workspace project: "${flowScriptPrompt}".
 Output format must be a structured markdown list containing sections:
 - **Project Title**: [Creative Title]
