@@ -169,6 +169,59 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
     throw new Error(defaultFallbackMsg);
   };
 
+  const formatGeminiError = (err: any): string => {
+    if (!err) return "Something interrupted the creative spark.";
+    let rawMsg = typeof err === 'string' ? err : err.message || String(err);
+
+    // If it's a JSON string from GoogleGenAI API
+    try {
+      const parsed = typeof err.error === 'object' ? err : JSON.parse(rawMsg);
+      if (parsed.error?.message) {
+        rawMsg = parsed.error.message;
+      }
+    } catch {
+      // not JSON
+    }
+
+    const lower = rawMsg.toLowerCase();
+
+    if (
+      lower.includes('quota') ||
+      lower.includes('resource_exhausted') ||
+      lower.includes('429') ||
+      lower.includes('rate limit') ||
+      lower.includes('limit: 0')
+    ) {
+      return 'Quota Exceeded: Gemini image generation requires an API key with billing enabled (free tier quota limit is 0 for image models). Please configure a paid API key or select your key in Settings.';
+    }
+
+    if (
+      lower.includes('permission denied') ||
+      lower.includes('403') ||
+      lower.includes('500') ||
+      lower.includes('rpc failed') ||
+      lower.includes('proxyunarycall') ||
+      lower.includes('xhr error')
+    ) {
+      return 'Authorization Notice: Image generation requires a valid Gemini API key with billing enabled. Please configure your key in Settings > Secrets.';
+    }
+
+    if (
+      lower.includes('image_safety') ||
+      lower.includes('safety') ||
+      lower.includes('blocked') ||
+      lower.includes('filter')
+    ) {
+      return 'Content Safety Notice: The request was flagged by Gemini safety guidelines. Please modify your prompt or select a different reference image.';
+    }
+
+    if (lower.includes('image_other') || lower.includes('other')) {
+      return 'Generation Notice: The AI model was unable to generate or edit the image with this prompt. Try rephrasing your prompt or using a simpler description.';
+    }
+
+    return rawMsg;
+  };
+
   const generateImage = async () => {
     if (!prompt.trim()) {
       setError("An empty canvas needs words to come alive.");
@@ -212,20 +265,7 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
 
           const dataUrl = parseGeminiImageResponse(response, "The AI was unable to render your vision. Try refining your prompt or reference image.");
           setGeneratedImages(prev => [dataUrl, ...prev]);
-          console.log(`Generated and saved image.`);
         } catch (imgError: any) {
-           const errMsg = imgError.message || String(imgError);
-           if (
-              errMsg.includes('permission denied') ||
-              errMsg.includes('403') ||
-              errMsg.includes('500') ||
-              errMsg.includes('Rpc failed') ||
-              errMsg.includes('ProxyUnaryCall') ||
-              errMsg.includes('xhr error') ||
-              imgError.status === 403
-           ) {
-              throw new Error('Image generation/editing requires a paid Gemini key. Please click "Settings > Secrets" and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
-           }
            throw imgError;
         }
       } else {
@@ -245,28 +285,12 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
         
         const dataUrl = parseGeminiImageResponse(response, "The AI was unable to render your vision. Try refining your prompt.");
         setGeneratedImages(prev => [dataUrl, ...prev]);
-        console.log(`Generated and saved image.`);
       }
 
     } catch (err: any) {
-      console.error("AI Generation Error:", err);
-      const errMsg = err.message || String(err);
-      if (
-        errMsg.includes('permission denied') ||
-        errMsg.includes('403') ||
-        errMsg.includes('500') ||
-        errMsg.includes('Rpc failed') ||
-        errMsg.includes('ProxyUnaryCall') ||
-        errMsg.includes('xhr error')
-      ) {
-        setError('Image generation/editing requires a paid Gemini key. Please click Settings > Secrets and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
-      } else if (errMsg.includes('IMAGE_SAFETY') || errMsg.includes('SAFETY') || errMsg.includes('Safety') || errMsg.includes('safety') || errMsg.includes('BLOCK')) {
-        setError('Content Safety Notice: The request was flagged by Gemini safety guidelines. Please modify your prompt or select a different reference image.');
-      } else if (errMsg.includes('IMAGE_OTHER') || errMsg.includes('OTHER') || errMsg.includes('other')) {
-        setError('Generation Notice: The AI model was unable to generate an image for this prompt. Try rephrasing your prompt or using a simpler description.');
-      } else {
-        setError(errMsg || "Something interrupted the creative spark.");
-      }
+      const cleanError = formatGeminiError(err);
+      console.warn("AI Generation issue:", cleanError);
+      setError(cleanError);
     } finally {
       setIsGenerating(false);
       setStatus('');
@@ -316,26 +340,10 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
 
       const dataUrl = parseGeminiImageResponse(response, "The AI was unable to edit your image. Try refining your edit prompt or reference image.");
       setGeneratedImages(prev => [dataUrl, ...prev]);
-      console.log(`Generated and saved edited image.`);
     } catch (imgError: any) {
-       console.error("Image editing error", imgError);
-       const errMsg = imgError.message || String(imgError);
-       if (
-         errMsg.includes('permission denied') ||
-         errMsg.includes('403') ||
-         errMsg.includes('500') ||
-         errMsg.includes('Rpc failed') ||
-         errMsg.includes('ProxyUnaryCall') ||
-         errMsg.includes('xhr error')
-       ) {
-         setError('Image generation/editing requires a paid Gemini key. Please click Settings > Secrets and add a paid Google Gemini API Key, or select "Paid Model Flow" under UI options. Alternatively, you can remove the reference image to use standard free generation.');
-       } else if (errMsg.includes('IMAGE_SAFETY') || errMsg.includes('SAFETY') || errMsg.includes('Safety') || errMsg.includes('safety') || errMsg.includes('BLOCK')) {
-         setError('Content Safety Notice: The image edit or prompt was flagged by Gemini safety guidelines. Please adjust your prompt or select a different reference image.');
-       } else if (errMsg.includes('IMAGE_OTHER') || errMsg.includes('OTHER') || errMsg.includes('other')) {
-         setError('Generation Notice: The AI model was unable to edit the image with this prompt. Try simplifying your prompt or selecting a different reference image.');
-       } else {
-         setError(errMsg || "Failed to edit image.");
-       }
+       const cleanError = formatGeminiError(imgError);
+       console.warn("AI Editing issue:", cleanError);
+       setError(cleanError);
     } finally {
        setIsGenerating(false);
        setStatus('');
@@ -625,13 +633,31 @@ export function ImageGenerator({ onBack }: ImageGeneratorProps) {
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5 flex items-center gap-4 text-red-200"
+              className="bg-red-500/10 border border-red-500/20 rounded-3xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-red-200"
             >
-              <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
-              <p className="text-sm font-medium">{error}</p>
-              <button onClick={() => setError('')} className="ml-auto p-2 hover:bg-white/10 rounded-full transition-colors">
-                <X className="w-5 h-5 text-white/30" />
-              </button>
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                {typeof window !== 'undefined' && window.aistudio?.openSelectKey && (
+                  <button 
+                    onClick={async () => {
+                      try {
+                        await window.aistudio?.openSelectKey();
+                      } catch (e) {
+                        console.warn(e);
+                      }
+                    }} 
+                    className="px-3.5 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-white rounded-xl text-xs font-semibold border border-red-500/30 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    Select Paid Key
+                  </button>
+                )}
+                <button onClick={() => setError('')} className="p-2 hover:bg-white/10 rounded-full transition-colors cursor-pointer">
+                  <X className="w-5 h-5 text-white/30" />
+                </button>
+              </div>
             </motion.div>
           )}
 

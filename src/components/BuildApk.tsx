@@ -54,7 +54,7 @@ export function BuildApk({ isVpnConnected, onBack }: BuildApkProps) {
       setProgress(10);
       
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.8-flash',
         contents: `Analyze this URL: ${url} for an app named "${appName}". Generate 8 realistic Android APK build log steps (like fetching assets, configuring manifest, compiling, signing). Return ONLY a JSON array of strings.`,
         config: {
           responseMimeType: "application/json",

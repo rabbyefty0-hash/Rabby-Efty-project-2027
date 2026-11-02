@@ -104,7 +104,7 @@ export default function CameraApp({ onClose }: CameraAppProps) {
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-preview',
+        model: 'gemini-3.8-flash',
         contents: { parts }
       });
 

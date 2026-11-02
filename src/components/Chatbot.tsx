@@ -152,7 +152,7 @@ export function Chatbot({
       const { GoogleGenAI } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.8-flash',
         contents: `Enhance the following prompt to be more specific and action-oriented, focusing on clarity and conciseness. For example, instead of 'Add search', suggest 'Implement a search bar with real-time suggestions'. Prompt: "${input}"`,
       });
       if (response.text) {

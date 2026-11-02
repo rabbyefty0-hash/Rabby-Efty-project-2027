@@ -172,7 +172,7 @@ export function VoiceChat({ isVpnConnected, onBack }: VoiceChatProps) {
       }
 
       const sessionPromise = ai.live.connect({
-        model: "gemini-3.1-flash-live-preview",
+        model: "gemini-3.8-live",
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {

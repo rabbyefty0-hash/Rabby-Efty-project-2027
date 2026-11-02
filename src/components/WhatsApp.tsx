@@ -289,7 +289,7 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.8-flash',
         contents: `Generate 3 short, conversational replies to this message: "${text}". Return ONLY a JSON array of 3 strings. Do not include markdown formatting or any other text.`,
       });
       
@@ -319,7 +319,7 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.8-flash',
         contents: `You are a helpful WhatsApp AI assistant. Keep your replies concise and friendly, like a chat message. The user says: "${text}"`,
       });
       
@@ -463,7 +463,7 @@ export function WhatsApp({ onBack }: WhatsAppProps) {
       }
 
       const sessionPromise = ai.live.connect({
-        model: "gemini-3.1-flash-live-preview",
+        model: "gemini-3.8-live",
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {

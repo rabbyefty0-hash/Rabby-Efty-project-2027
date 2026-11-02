@@ -67,7 +67,7 @@ export function FbAutoLike({ isVpnConnected, onBack }: FbAutoLikeProps) {
       
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.8-flash",
         contents: `Analyze this Facebook URL: ${url}. 
         Determine if it's a valid post, photo, or video link. 
         Check if it appears to be a public link.

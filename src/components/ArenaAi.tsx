@@ -7,10 +7,10 @@ import { UploadedFile } from '../types';
 import { addNode, generateId } from '../lib/vfs';
 
 const MODELS = [
-  { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash' },
+  { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash' },
   { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro' },
-  { id: 'gemini-3.1-flash-lite-preview', name: 'Gemini 3.1 Flash Lite' },
-  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash' },
+  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite' },
+  { id: 'gemini-flash-latest', name: 'Gemini Flash' },
   { id: 'chatgpt-5-style', name: 'ChatGPT-5 (Simulated)' },
   { id: 'grok-2-style', name: 'Grok 2.0 (Simulated)' },
   { id: 'claude-3-5-style', name: 'Claude 3.5 Opus (Simulated)' },
@@ -58,7 +58,7 @@ export function ArenaAi({ isVpnConnected, onBack }: ArenaAiProps) {
       const { GoogleGenAI } = await import('@google/genai');
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.8-flash',
         contents: `Enhance the following prompt to be more specific and action-oriented, focusing on clarity and conciseness. For example, instead of 'Add search', suggest 'Implement a search bar with real-time suggestions'. Prompt: "${prompt}"`,
       });
       if (response.text) {

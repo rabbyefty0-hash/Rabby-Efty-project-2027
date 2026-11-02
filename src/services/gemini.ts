@@ -203,7 +203,7 @@ export interface ArenaResult {
 export async function compareModels(
   prompt: string, 
   image?: UploadedFile, 
-  modelAId: string = 'gemini-3-flash-preview', 
+  modelAId: string = 'gemini-3.8-flash', 
   modelBId: string = 'gemini-3.1-pro-preview',
   mode: 'text' | 'image' = 'text',
   styleA?: string,

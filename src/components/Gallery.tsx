@@ -101,7 +101,7 @@ export function Gallery({ onBack }: GalleryProps) {
 
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
+          model: 'gemini-3.8-flash',
           contents: {
             parts: [
               {

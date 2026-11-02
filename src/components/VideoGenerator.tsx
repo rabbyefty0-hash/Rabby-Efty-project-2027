@@ -285,7 +285,7 @@ export function VideoGenerator({ isVpnConnected, onBack }: VideoGeneratorProps) 
       if (!apiKey) throw new Error('API Key missing');
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.8-flash',
         contents: `Create a professional high-quality video storyboard and script breakdown for a workspace project: "${flowScriptPrompt}".
 Output format must be a structured markdown list containing sections:
 - **Project Title**: [Creative Title]
@@ -471,7 +471,7 @@ Output format must be a structured markdown list containing sections:
       if (!apiKey) throw new Error('API Key missing');
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.8-flash',
         contents: `Enhance the following prompt to be more specific and action-oriented, focusing on clarity and conciseness. For example, instead of 'Add search', suggest 'Implement a search bar with real-time suggestions'. Prompt: "${prompt}"`,
       });
       if (response.text) {
